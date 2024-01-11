@@ -21,3 +21,6 @@ build/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Joyride project files
+.joyride/.nrepl-port
