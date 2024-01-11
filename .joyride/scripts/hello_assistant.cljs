@@ -26,10 +26,12 @@
               (openai.beta.threads.create)))
 
 (def example-message {:role "user"
-                      :content "Which programming language do you prefer?"})
+                      :content "Please compare Rust with Clojure, and tell me why I should choose one over the other"})
 
 ;(defonce !messages (atom start-messages))
 
+(def done-statuses #{"completed" "failed" "expired" "cancelled"})
+(def poll-interval 100)
 
 (defn ask-chatgpt! []
   (-> (p/let [my-assistant assistant
@@ -42,14 +44,27 @@
                    (.-id my-thread)
                    (clj->js {:assistant_id (.-id my-assistant)
                              :instructions "You love Rust, and would never use anything else"}))
-              retrieved-js (openai.beta.threads.runs.retrieve (.-id my-thread) (.-id run))
-              retrieved (js->clj retrieved-js)
-              _ (def retrieved retrieved)
-              messages (openai.beta.threads.messages.list (.-id my-thread))]
-        #_(println "ChatGPT: " (:content reply-message) "\n")
+              retriever-p
+              (p/create
+               (fn [resolve reject]
+                 (let [retriever (fn retriever [tries]
+                                   (println "poll: " tries "\n")
+                                   (def tries tries)
+                                   (p/let [retrieved-js (openai.beta.threads.runs.retrieve (.-id my-thread) (.-id run))
+                                           retrieved (->clj retrieved-js)
+                                           _ (def retrieved retrieved)
+                                           messages (openai.beta.threads.messages.list (.-id my-thread))]
+                                     (if (done-statuses (:status retrieved))
+                                       (resolve messages)
+                                       (js/setTimeout
+                                        #(retriever (inc tries))
+                                        poll-interval))))]
+                   (retriever 0))))
+
+              messages retriever-p]
         (def messages messages)
-        (js->clj (-> messages .-body .-data)))
-      (p/catch (fn [e] (println e "\n")))))
+        (println (js->clj (-> messages .-body .-data)) "\n"))
+      (p/catch (fn [e] (println "ERROR: " e "\n")))))
 
 (comment
   (ask-chatgpt!)
