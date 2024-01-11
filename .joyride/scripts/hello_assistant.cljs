@@ -37,9 +37,10 @@
   (-> (p/let [my-assistant assistant
               my-thread thread
               _ (def my-thread my-thread)
-              _message (openai.beta.threads.messages.create (.-id my-thread) (clj->js example-message))
+              input (vscode/window.showInputBox)
+              _message (openai.beta.threads.messages.create (.-id my-thread) (clj->js {:role "user"
+                                                                                       :content input}))
               _ (def _message _message)
-              ;input (vscode/window.showInputBox)
               run (openai.beta.threads.runs.create
                    (.-id my-thread)
                    (clj->js {:assistant_id (.-id my-assistant)
