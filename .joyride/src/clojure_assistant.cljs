@@ -45,6 +45,8 @@
 (def poll-interval 100)
 
 (defn ask!+ []
+  (-> channel (.show true))
+  (swap! !db assoc :interrupted? false)
   (-> (p/let [assistant (:assistant+ @!db)
               thread (:thread+ @!db)
               _ (def thread thread)
@@ -60,7 +62,8 @@
               messages (p/create
                         (fn [resolve reject]
                           (let [retriever (fn retriever [tries]
-                                            (println "poll: " tries "\n")
+                                            (print ".")
+                                            (-> channel (.append "."))
                                             (def tries tries)
                                             (p/let [retrieved-js (openai.beta.threads.runs.retrieve
                                                                   (.-id thread)
@@ -96,6 +99,7 @@
 
 (defn- my-main []
   (clear-disposables!)
+  (-> channel (.show true))
   #_(push-disposable something)
   #_(push-disposable (something-else)))
 
