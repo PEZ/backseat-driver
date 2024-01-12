@@ -92,7 +92,7 @@
               thread (:thread+ @!db)
               #_#__ (def thread thread)
               input (vscode/window.showInputBox)
-              _ ()
+              _ (log-ln "Me:" input)
               _message (openai.beta.threads.messages.create (.-id thread)
                                                             (clj->js {:role "user"
                                                                       :content input}))
@@ -103,9 +103,13 @@
                              :instructions (prompts/system-and-context-instructions)}))
               api-messages (retrieve-poller+ thread run)
               clj-messages (->clj (-> api-messages .-body .-data))
+              _ (def clj-messages clj-messages)
               new-messages (if-let [last-created-at (some-> @!db :last-message :created_at)]
-                             (filter #(> (:created_at %) last-created-at) clj-messages)
+                             (filter #(and (> (:created_at %) last-created-at)
+                                           (= (:role %) "assistant"))
+                                     clj-messages)
                              clj-messages)
+              _ (def new-messages new-messages)
               _ (swap! !db assoc :next-last-message (:last-message @!db))
               _ (swap! !db assoc :last-message (first clj-messages))
               message-texts (map (fn [m]
@@ -119,6 +123,7 @@
                                     .-value)]
         #_(def api-messages api-messages)
         (-> channel .appendLine)
+        (log-ln "Assistant:")
         (apply log-ln message-texts)
         #_(def pprinted-messages pprinted-messages)
         new-messages)
@@ -146,5 +151,3 @@
 
 (when (= (joyride/invoked-script) joyride/*file*)
   (ask!+))
-
-
