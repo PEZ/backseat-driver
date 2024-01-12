@@ -26,6 +26,7 @@
 (defn- my-main []
   (println "Hello World, from my-main workspace_activate.cljs script")
   (clear-disposables!)
+  (clojure-assistant/init!)
   #_(push-disposable
    ;; It might surprise you to see how often and when this happens,
    ;; and when it doesn't happen.
