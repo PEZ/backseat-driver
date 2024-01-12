@@ -7,6 +7,23 @@
             [joyride.core :as joyride]
             [promesa.core :as p]))
 
+(defonce !db (atom {:disposables []
+                    :assistant+ nil
+                    :thread+ nil
+                    :interrupted? false}))
+
+(defn- clear-disposables! []
+  (run! (fn [disposable]
+          (.dispose disposable))
+        (:disposables @!db))
+  (swap! !db assoc :disposables []))
+
+(defn- push-disposable [disposable]
+  (swap! !db update :disposables conj disposable)
+  (-> (joyride/extension-context)
+      .-subscriptions
+      (.push disposable)))
+
 (def channel (joyride/output-channel))
 
 (defn ->clj [o] (js->clj o :keywordize-keys true))
@@ -16,21 +33,21 @@
 (def gpt4 "gpt-4-1106-preview")
 (def gpt3 "gpt-3.5-turbo-1106")
 
-(def assistant+ (openai.beta.assistants.create (clj->js {:name "VS Code Clojure Assistant"
-                                                         :instructions prompts/system-instructions
-                                                         :tools [{:type "code_interpreter"}
-                                                                 #_{:type "retrieval"}]
-                                                         :model gpt4})))
+(swap! !db assoc :assistant+ (openai.beta.assistants.create (clj->js {:name "VS Code Clojure Assistant"
+                                                                      :instructions prompts/system-instructions
+                                                                      :tools [{:type "code_interpreter"}
+                                                                              #_{:type "retrieval"}]
+                                                                      :model gpt4})))
 
-(def thread+ (openai.beta.threads.create))
+(swap! !db assoc :thread+ (openai.beta.threads.create))
 
 (def done-statuses #{"completed" "failed" "expired" "cancelled"})
 (def poll-interval 100)
 
 (defn ask!+ []
-  (-> (p/let [assistant assistant+
-              thread thread+
-              _ (def my-thread thread)
+  (-> (p/let [assistant (:assistant+ @!db)
+              thread (:thread+ @!db)
+              _ (def thread thread)
               input (vscode/window.showInputBox)
               _message (openai.beta.threads.messages.create (.-id thread)
                                                             (clj->js {:role "user"
@@ -53,9 +70,13 @@
                                                     messages (openai.beta.threads.messages.list (.-id thread))]
                                               (if (done-statuses (:status retrieved))
                                                 (resolve messages)
-                                                (js/setTimeout
-                                                 #(retriever (inc tries))
-                                                 poll-interval))))]
+                                                (if (:interrupted? @!db)
+                                                  (do
+                                                    (swap! !db assoc :interrupted? false)
+                                                    (reject :interrupted))
+                                                  (js/setTimeout
+                                                   #(retriever (inc tries))
+                                                   poll-interval)))))]
                             (retriever 0))))]
         (def messages messages)
         (-> channel
@@ -69,9 +90,16 @@
 (comment
   (p/let [result (ask!+)]
     (-> result pr-str calva/pprint.prettyPrint .-value println))
+  (swap! !db assoc :interrupted? true)
+  (swap! !db assoc :interrupted? false)
   :rcf)
 
+(defn- my-main []
+  (clear-disposables!)
+  #_(push-disposable something)
+  #_(push-disposable (something-else)))
 
-(when (joyride/invoked-script)
+(when (= (joyride/invoked-script) joyride/*file*)
   (ask!+))
+
 
