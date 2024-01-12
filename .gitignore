@@ -24,3 +24,6 @@ Thumbs.db
 
 # Joyride project files
 .joyride/.nrepl-port
+
+# Clojure cache
+.cpcache/
