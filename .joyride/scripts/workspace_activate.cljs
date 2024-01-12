@@ -1,6 +1,7 @@
 (ns workspace-activate
   (:require [joyride.core :as joyride]
-            ["vscode" :as vscode]))
+            ["vscode" :as vscode]
+            [clojure-assistant]))
 
 (defonce !db (atom {:disposables []}))
 
