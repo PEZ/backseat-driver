@@ -7,20 +7,6 @@
             [joyride.core :as joyride]
             [promesa.core :as p]))
 
-(def ^:private channel (vscode/window.createOutputChannel "Clojure Assistant" "markdown"))
-
-(defn log-ln [message & messages]
-  (-> channel (.append message))
-  (doseq [message messages]
-    (-> channel (.append " "))
-    (-> channel (.append message)))
-  (-> channel (.appendLine)))
-
-(defn log-one [message]
-  (-> channel (.append message)))
-
-(defn ->clj [o] (js->clj o :keywordize-keys true))
-
 (defonce ^:private openai (openai/OpenAI.))
 
 (def ^:private gpt4 "gpt-4-1106-preview")
@@ -30,15 +16,35 @@
                            :assistant+ nil
                            :thread+ nil
                            :last-message nil
+                           :channel nil
                            :interrupted? false})
 
 (defonce ^:private  !db (atom nil))
+
+(defn log-ln [message & messages]
+  (let [channel (:channel @!db)]
+    (-> channel (.append message))
+    (doseq [message messages]
+      (-> channel (.append " "))
+      (-> channel (.append message)))
+    (-> channel (.appendLine ""))))
+
+(defn log-one [message]
+  (-> (:channel @!db) (.append message)))
+
+(defn ->clj [o] (js->clj o :keywordize-keys true))
 
 (defn- clear-disposables! []
   (run! (fn [disposable]
           (.dispose disposable))
         (:disposables @!db))
   (swap! !db assoc :disposables []))
+
+(defn- push-disposable [disposable]
+  (swap! !db update :disposables conj disposable)
+  (-> (joyride/extension-context)
+      .-subscriptions
+      (.push disposable)))
 
 (defn init! []
   (clear-disposables!)
@@ -49,13 +55,10 @@
                                                                                 #_{:type "retrieval"}]
                                                                         :model gpt4})))
 
-  (swap! !db assoc :thread+ (openai.beta.threads.create)))
-
-(defn- push-disposable [disposable]
-  (swap! !db update :disposables conj disposable)
-  (-> (joyride/extension-context)
-      .-subscriptions
-      (.push disposable)))
+  (swap! !db assoc :thread+ (openai.beta.threads.create))
+  (let [channel (vscode/window.createOutputChannel "Clojure Assistant" "markdown")]
+    (push-disposable channel)
+    (swap! !db assoc :channel channel)))
 
 (def ^:private done-statuses #{"completed" "failed" "expired" "cancelled"})
 (def ^:private  poll-interval 100)
@@ -74,7 +77,7 @@
                                messages (openai.beta.threads.messages.list (.-id thread))]
                          (if (done-statuses (:status retrieved))
                            (do
-                             (-> channel (.appendLine))
+                             (log-ln "")
                              (resolve messages))
                            (if (:interrupted? @!db)
                              (do
@@ -86,7 +89,7 @@
        (retriever 0)))))
 
 (defn ask!+ []
-  (-> channel (.show true))
+  (-> (:channel @!db) (.show true))
   (swap! !db assoc :interrupted? false)
   (-> (p/let [assistant (:assistant+ @!db)
               thread (:thread+ @!db)
@@ -108,7 +111,8 @@
                              (filter #(and (> (:created_at %) last-created-at)
                                            (= (:role %) "assistant"))
                                      clj-messages)
-                             clj-messages)
+                             (filter #(= (:role %) "assistant")
+                                     clj-messages))
               _ (def new-messages new-messages)
               _ (swap! !db assoc :next-last-message (:last-message @!db))
               _ (swap! !db assoc :last-message (first clj-messages))
@@ -122,9 +126,10 @@
                                     calva/pprint.prettyPrint
                                     .-value)]
         #_(def api-messages api-messages)
-        (-> channel .appendLine)
-        (log-ln "Assistant:")
-        (apply log-ln message-texts)
+        (log-ln "")
+        (doseq [text message-texts]
+          (log-ln "Assistant:")
+          (log-ln text))
         #_(def pprinted-messages pprinted-messages)
         new-messages)
       (p/catch (fn [e] (println "ERROR: " e "\n")))))
@@ -145,7 +150,6 @@
 
 (defn- my-main []
   (clear-disposables!)
-  (-> channel (.show true))
   #_(push-disposable something)
   #_(push-disposable (something-else)))
 
