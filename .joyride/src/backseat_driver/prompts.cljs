@@ -1,6 +1,6 @@
-(ns assistant-prompts
+(ns backseat-driver.prompts
   (:require ["vscode" :as vscode]
-            [context :as context]
+            [backseat-driver.context :as context]
             [clojure.string :as string]))
 
 (def system-instructions

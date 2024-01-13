@@ -1,8 +1,8 @@
-(ns admin
+(ns backseat-driver.admin
   (:require ["axios" :as axios]
             ["openai" :as openai]
             [promesa.core :as p]
-            [local-config :as conf]))
+            [backseat-driver.local-config :as conf]))
 
 (defonce ^:private openai (openai/OpenAI.))
 

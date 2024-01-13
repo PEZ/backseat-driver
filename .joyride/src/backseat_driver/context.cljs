@@ -1,4 +1,4 @@
-(ns context
+(ns backseat-driver.context
   (:require ["vscode" :as vscode]
             ["ext://betterthantomorrow.calva$v1" :as calva]
             [clojure.string :as string]

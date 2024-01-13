@@ -1,10 +1,10 @@
-(ns clojure-assistant
+(ns backseat-driver.assistant
   (:require ["vscode" :as vscode]
             ["openai" :as openai]
             ["ext://betterthantomorrow.calva$v1" :as calva]
-            [assistant-prompts :as prompts]
+            [backseat-driver.prompts :as prompts]
             [backseat-driver.fs :as bd-fs]
-            [context :as context]
+            [backseat-driver.context :as context]
             [joyride.core :as joyride]
             [promesa.core :as p]))
 
