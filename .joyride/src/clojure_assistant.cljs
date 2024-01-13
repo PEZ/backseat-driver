@@ -51,14 +51,14 @@
 (defn init! []
   (clear-disposables!)
   (reset! !db default-db)
-  (swap! !db assoc :assistant+ (openai.beta.assistants.create (clj->js {:name "VS Code Clojure Assistant"
+  (swap! !db assoc :assistant+ (openai.beta.assistants.create (clj->js {:name "Backseat Driver"
                                                                         :instructions prompts/system-instructions
-                                                                        :tools [{:type "code_interpreter"}
+                                                                        :tools [#_{:type "code_interpreter"}
                                                                                 #_{:type "retrieval"}]
                                                                         :model gpt4})))
 
   (swap! !db assoc :thread+ (openai.beta.threads.create))
-  (let [channel (vscode/window.createOutputChannel "Clojure Assistant" "markdown")]
+  (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")]
     (push-disposable channel)
     (swap! !db assoc :channel channel)))
 
