@@ -49,15 +49,25 @@
       .-subscriptions
       (.push disposable)))
 
+(defn get-or-create-assistant!+ []
+  (p/let [assistant-storage-key "backseat-driver:assistant-id"
+          global-state (-> (joyride/extension-context) .-globalState)
+          existing-assistant-id (.get global-state assistant-storage-key)
+          assistant (if existing-assistant-id
+                      (openai.beta.assistants.retrieve existing-assistant-id)
+                      (openai.beta.assistants.create (clj->js {:name "Backseat Driver"
+                                                               :instructions prompts/system-instructions
+                                                               :tools [{:type "code_interpreter"}
+                                                                       #_{:type "retrieval"}]
+                                                               :model gpt4})))
+          assistant-id (.-id assistant)]
+    (.update global-state assistant-storage-key assistant-id)
+    assistant))
+
 (defn init! []
   (clear-disposables!)
   (reset! !db default-db)
-  (swap! !db assoc :assistant+ (openai.beta.assistants.create (clj->js {:name "Backseat Driver"
-                                                                        :instructions prompts/system-instructions
-                                                                        :tools [{:type "code_interpreter"}
-                                                                                #_{:type "retrieval"}]
-                                                                        :model gpt4})))
-
+  (swap! !db assoc :assistant+ (get-or-create-assistant!+))
   (swap! !db assoc :thread+ (openai.beta.threads.create))
   (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")]
     (push-disposable channel)
@@ -101,6 +111,7 @@
   (-> (:channel @!db) (.show true))
   (swap! !db assoc :interrupted? false)
   (-> (p/let [assistant (:assistant+ @!db)
+              _ (println assistant)
               thread (:thread+ @!db)
               #_#__ (def thread thread)
               input (vscode/window.showInputBox #js {:prompt "What do you want say to the assistant?"
