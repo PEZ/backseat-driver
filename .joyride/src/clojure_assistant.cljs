@@ -94,7 +94,9 @@
   (-> (p/let [assistant (:assistant+ @!db)
               thread (:thread+ @!db)
               #_#__ (def thread thread)
-              input (vscode/window.showInputBox)
+              input (vscode/window.showInputBox #js {:prompt "What do you want say to the assistant?"
+                                                     :placeHolder "Something something"
+                                                     :ignoreFocusOut true})
               _ (log-ln "Me:" input)
               _message (openai.beta.threads.messages.create (.-id thread)
                                                             (clj->js {:role "user"
@@ -103,7 +105,8 @@
               run (openai.beta.threads.runs.create
                    (.-id thread)
                    (clj->js {:assistant_id (.-id assistant)
-                             :instructions (prompts/system-and-context-instructions)}))
+                             :instructions (prompts/system-and-context-instructions)
+                             :model gpt4}))
               api-messages (retrieve-poller+ thread run)
               clj-messages (->clj (-> api-messages .-body .-data))
               _ (def clj-messages clj-messages)
@@ -120,7 +123,7 @@
                                    (-> m :content first :text :value))
                                  new-messages)
               _ (def message-texts message-texts)
-              #_#__ (def clj-messages clj-messages)
+              _ (def clj-messages clj-messages)
               pprinted-messages (-> new-messages
                                     pr-str
                                     calva/pprint.prettyPrint
@@ -130,7 +133,6 @@
         (doseq [text message-texts]
           (log-ln "Assistant:")
           (log-ln text))
-        #_(def pprinted-messages pprinted-messages)
         new-messages)
       (p/catch (fn [e] (println "ERROR: " e "\n")))))
 
@@ -155,3 +157,4 @@
 
 (when (= (joyride/invoked-script) joyride/*file*)
   (ask!+))
+
