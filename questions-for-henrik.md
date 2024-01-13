@@ -8,3 +8,4 @@ Hur hanterar man att det tar väldigt lång tid att få svar ibland?
 Jag lyckas inte få Assistant att tillförlitligt fatta att jag skickar kontext
 via instruktionerna. Är det fel sätt att göra det?
 
+När jag skickar contextet via user message hittar botten det alltid, men den blir också mycket, mycket dyrare i API-kostnade. Kanske 10x, kanske mer...
