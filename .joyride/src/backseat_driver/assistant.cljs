@@ -50,7 +50,7 @@
       (.push disposable)))
 
 (defn get-or-create-assistant!+ []
-  (p/let [assistant-storage-key "backseat-driver:assistant-id"
+  (p/let [assistant-storage-key "backseat-driver-assistant-id"
           global-state (-> (joyride/extension-context) .-globalState)
           existing-assistant-id (.get global-state assistant-storage-key)
           assistant (if existing-assistant-id
@@ -63,6 +63,43 @@
           assistant-id (.-id assistant)]
     (.update global-state assistant-storage-key assistant-id)
     assistant))
+
+
+(def ^:private threads-storage-key "backseat-driver-threads-testing")
+
+(defn retrieve-saved-threads []
+  (let [workspace-state (-> (joyride/extension-context) .-workspaceState)]
+    (-> (.get workspace-state threads-storage-key #js {}) ->clj)))
+
+(defn save-thread!+
+  [thread title]
+  (let [stored-threads (js->clj (retrieve-saved-threads))
+        threads (assoc stored-threads (.-id thread) {:thread-id (.-id thread)
+                                                     :created-at (.-created_at thread)
+                                                     :updated-at (js/Date.)
+                                                     :title title})
+        workspace-state (-> (joyride/extension-context) .-workspaceState)]
+    (.update workspace-state threads-storage-key (clj->js threads))))
+
+(defn- ->vec-sort-vals-by [m f]
+  (->> m
+       vals
+       (sort-by f)
+       vec))
+
+(defn retrieve-saved-threads-sorted []
+  (-> (retrieve-saved-threads)
+      (->vec-sort-vals-by :created-at)))
+
+(comment
+  (-> (joyride/extension-context) .-workspaceState (.update "backseat-driver-threads-testing" js/undefined))
+  (save-thread!+ #js {:id "foo" :created_at (js/Date.) :something "something too"}
+                 "My Foo Thread")
+  (save-thread!+ #js {:id "bar" :created_at (js/Date.) :something "something too"}
+                 "A BAR THREAD")
+  (retrieve-saved-threads)
+  (retrieve-saved-threads-sorted)
+  :rcf)
 
 (defn init! []
   (clear-disposables!)
