@@ -69,7 +69,6 @@
   (p/create
    (fn [resolve reject]
      (let [retriever (fn retriever [tries]
-                       (print ".")
                        (log-one ".")
                        (p/let [retrieved-js (openai.beta.threads.runs.retrieve
                                              (.-id thread)
@@ -98,61 +97,61 @@
               #_#__ (def thread thread)
               input (vscode/window.showInputBox #js {:prompt "What do you want say to the assistant?"
                                                      :placeHolder "Something something"
-                                                     :ignoreFocusOut true})
-              _ (log-ln "Me:" input)
-              augmented-input (str (prompts/system-and-context-instructions)
-                                   "\n\n---\nINPUT FROM THE USER:\n"
-                                   input)
-              _message (openai.beta.threads.messages.create (.-id thread)
-                                                            (clj->js {:role "user"
-                                                                      :content augmented-input}))
-              #_#__ (def _message _message)
-              run (openai.beta.threads.runs.create
-                   (.-id thread)
-                   (clj->js {:assistant_id (.-id assistant)
-                             #_#_:instructions (prompts/system-and-context-instructions)
-                             :model gpt4}))
-              api-messages (retrieve-poller+ thread run)
-              clj-messages (->clj (-> api-messages .-body .-data))
-              _ (def clj-messages clj-messages)
-              new-messages (if-let [last-created-at (some-> @!db :last-message :created_at)]
-                             (filter #(and (> (:created_at %) last-created-at)
-                                           (= (:role %) "assistant"))
-                                     clj-messages)
-                             (filter #(= (:role %) "assistant")
-                                     clj-messages))
-              _ (def new-messages new-messages)
-              _ (swap! !db assoc :next-last-message (:last-message @!db))
-              _ (swap! !db assoc :last-message (first clj-messages))
-              message-texts (map (fn [m]
-                                   (-> m :content first :text :value))
-                                 new-messages)
-              _ (def message-texts message-texts)
-              _ (def clj-messages clj-messages)
-              pprinted-messages (-> new-messages
-                                    pr-str
-                                    calva/pprint.prettyPrint
-                                    .-value)]
-        #_(def api-messages api-messages)
-        (log-ln "")
-        (doseq [text message-texts]
-          (log-ln (str assistant-name ":"))
-          (log-ln text))
-        new-messages)
+                                                     :ignoreFocusOut true})]
+        (def input input)
+        (when-not (= js/undefined input)
+          (p/let
+           [_ (log-ln "\nMe:" input)
+            augmented-input (str (prompts/system-and-context-instructions)
+                                 "\n\n---\nINPUT FROM THE USER:\n"
+                                 input)
+            _message (openai.beta.threads.messages.create (.-id thread)
+                                                          (clj->js {:role "user"
+                                                                    :content augmented-input}))
+            #_#__ (def _message _message)
+            run (openai.beta.threads.runs.create
+                 (.-id thread)
+                 (clj->js {:assistant_id (.-id assistant)
+                           #_#_:instructions (prompts/system-and-context-instructions)
+                           :model gpt4}))
+            api-messages (retrieve-poller+ thread run)
+            clj-messages (->clj (-> api-messages .-body .-data))
+            _ (def clj-messages clj-messages)
+            new-messages (if-let [last-created-at (some-> @!db :last-message :created_at)]
+                           (filter #(and (> (:created_at %) last-created-at)
+                                         (= (:role %) "assistant"))
+                                   clj-messages)
+                           (filter #(= (:role %) "assistant")
+                                   clj-messages))
+            _ (def new-messages new-messages)
+            _ (swap! !db assoc :next-last-message (:last-message @!db))
+            _ (swap! !db assoc :last-message (first clj-messages))
+            message-texts (map (fn [m]
+                                 (-> m :content first :text :value))
+                               new-messages)
+            _ (def message-texts message-texts)
+            _ (def clj-messages clj-messages)
+            pprinted-messages (-> new-messages
+                                  pr-str
+                                  calva/pprint.prettyPrint
+                                  .-value)]
+            #_ (def api-messages api-messages)
+            (log-ln "")
+            (doseq [text message-texts]
+              (log-ln (str assistant-name ":"))
+              (log-ln text))
+            new-messages)))
       (p/catch (fn [e] (println "ERROR: " e "\n")))))
 
 (comment
-  (apply log-ln ["1" "2" "tre"])
-  (apply log-ln message-texts)
   (init!)
-  (log-ln "hej" 1 2 3)
   (p/let [result (ask!+)]
     (def result result)
-    (-> result pr-str calva/pprint.prettyPrint .-value println)
-    (log-ln result))
+    (-> result pr-str calva/pprint.prettyPrint .-value println))
   (swap! !db assoc :interrupted? true)
   (swap! !db assoc :interrupted? false)
   @!db
+  (println (-> @!db :last-message :content first :text :value))
   :rcf)
 
 (defn- my-main []
