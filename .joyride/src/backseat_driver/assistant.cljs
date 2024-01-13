@@ -65,7 +65,7 @@
     assistant))
 
 
-(def ^:private threads-storage-key "backseat-driver-threads-testing")
+(def ^:private threads-storage-key "backseat-driver-threads")
 
 (defn retrieve-saved-threads []
   (let [workspace-state (-> (joyride/extension-context) .-workspaceState)]
@@ -76,7 +76,7 @@
   (let [stored-threads (js->clj (retrieve-saved-threads))
         threads (assoc stored-threads (.-id thread) {:thread-id (.-id thread)
                                                      :created-at (.-created_at thread)
-                                                     :updated-at (js/Date.)
+                                                     :updated-at (-> (js/Date.) .getTime)
                                                      :title title})
         workspace-state (-> (joyride/extension-context) .-workspaceState)]
     (.update workspace-state threads-storage-key (clj->js threads))))
@@ -92,7 +92,8 @@
       (->vec-sort-vals-by :created-at)))
 
 (comment
-  (-> (joyride/extension-context) .-workspaceState (.update "backseat-driver-threads-testing" js/undefined))
+  (init!)
+  (-> (joyride/extension-context) .-workspaceState (.update "backseat-driver-threads" js/undefined))
   (save-thread!+ #js {:id "foo" :created_at (js/Date.) :something "something too"}
                  "My Foo Thread")
   (save-thread!+ #js {:id "bar" :created_at (js/Date.) :something "something too"}
@@ -105,7 +106,9 @@
   (clear-disposables!)
   (reset! !db default-db)
   (swap! !db assoc :assistant+ (get-or-create-assistant!+))
-  (swap! !db assoc :thread+ (openai.beta.threads.create))
+  (p/let [thread (openai.beta.threads.create)]
+    (swap! !db assoc :thread+ thread)
+    (save-thread!+ thread nil))
   (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")]
     (push-disposable channel)
     (swap! !db assoc :channel channel)))
@@ -148,9 +151,9 @@
   (-> (:channel @!db) (.show true))
   (swap! !db assoc :interrupted? false)
   (-> (p/let [assistant (:assistant+ @!db)
-              _ (println assistant)
               thread (:thread+ @!db)
-              #_#__ (def thread thread)
+              storage-thread (get (retrieve-saved-threads) (keyword (.-id thread)))
+              _ (def thread thread)
               input (vscode/window.showInputBox #js {:prompt "What do you want say to the assistant?"
                                                      :placeHolder "Something something"
                                                      :ignoreFocusOut true})]
@@ -158,6 +161,8 @@
         (when-not (= js/undefined input)
           (p/let
            [_ (log-ln "\nMe:" input)
+            _ (when-not (:title storage-thread)
+                (save-thread!+ thread (subs input 0 120)))
             augmented-input (prompts/augmented-user-input input)
             _ (def augmented-input augmented-input)
             _message (openai.beta.threads.messages.create (.-id thread)
