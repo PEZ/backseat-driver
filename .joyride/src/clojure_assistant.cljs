@@ -3,6 +3,7 @@
             ["openai" :as openai]
             ["ext://betterthantomorrow.calva$v1" :as calva]
             [assistant-prompts :as prompts]
+            [backseat-driver.fs :as bd-fs]
             [context :as context]
             [joyride.core :as joyride]
             [promesa.core :as p]))
@@ -53,7 +54,7 @@
   (reset! !db default-db)
   (swap! !db assoc :assistant+ (openai.beta.assistants.create (clj->js {:name "Backseat Driver"
                                                                         :instructions prompts/system-instructions
-                                                                        :tools [#_{:type "code_interpreter"}
+                                                                        :tools [{:type "code_interpreter"}
                                                                                 #_{:type "retrieval"}]
                                                                         :model gpt4})))
 
@@ -75,10 +76,16 @@
                                              (.-id run))
                                retrieved (->clj retrieved-js)
                                _ (def retrieved retrieved)
-                               messages (openai.beta.threads.messages.list (.-id thread))]
-                         (if (done-statuses (:status retrieved))
+                               messages (openai.beta.threads.messages.list (.-id thread))
+                               status (:status retrieved)]
+                         (if (done-statuses status)
                            (do
                              (log-ln "")
+                             (when-not (= "completed" status)
+                               (log-ln "status:" status)
+                               (println "status:" status)
+                               (println retrieved)
+                               (bd-fs/append-to-log (pr-str retrieved)))
                              (resolve messages))
                            (if (:interrupted? @!db)
                              (do
@@ -90,6 +97,7 @@
        (retriever 0)))))
 
 (defn ask!+ []
+  (def instructions (prompts/system-and-context-instructions))
   (-> (:channel @!db) (.show true))
   (swap! !db assoc :interrupted? false)
   (-> (p/let [assistant (:assistant+ @!db)
@@ -102,9 +110,8 @@
         (when-not (= js/undefined input)
           (p/let
            [_ (log-ln "\nMe:" input)
-            augmented-input (str (prompts/system-and-context-instructions)
-                                 "\n\n---\nINPUT FROM THE USER:\n"
-                                 input)
+            augmented-input (prompts/augmented-user-input input)
+            _ (def augmented-input augmented-input)
             _message (openai.beta.threads.messages.create (.-id thread)
                                                           (clj->js {:role "user"
                                                                     :content augmented-input}))
@@ -112,7 +119,7 @@
             run (openai.beta.threads.runs.create
                  (.-id thread)
                  (clj->js {:assistant_id (.-id assistant)
-                           #_#_:instructions (prompts/system-and-context-instructions)
+                           :instructions (prompts/system-and-context-instructions)
                            :model gpt4}))
             api-messages (retrieve-poller+ thread run)
             clj-messages (->clj (-> api-messages .-body .-data))
@@ -151,7 +158,7 @@
   (swap! !db assoc :interrupted? true)
   (swap! !db assoc :interrupted? false)
   @!db
-  (println (-> @!db :last-message :content first :text :value))
+  (println (-> @!db :next-last-message :content first :text :value))
   :rcf)
 
 (defn- my-main []
