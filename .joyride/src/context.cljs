@@ -6,9 +6,12 @@
             [promesa.core :as p]))
 
 (defn- range->offsets [range]
-  (let [document vscode/window.activeTextEditor.document]
-    [(.offsetAt document (.-start range))
-     (.offsetAt document (.-end range))]))
+  (when range
+    (let [editor vscode/window.activeTextEditor
+          document (some-> editor .-document)]
+      (when document
+        [(.offsetAt document (.-start range))
+         (.offsetAt document (.-end range))]))))
 
 (defn range-response->clj [response]
   (let [[range content] response]
@@ -21,21 +24,20 @@
 (defn current-top-level-form []
   (range-response->clj (calva/ranges.currentTopLevelForm)))
 
+(defn selection []
+  (let [document vscode/window.activeTextEditor.document]
+    {:range (range->offsets vscode/window.activeTextEditor.selection)
+     :content (-> document (.getText vscode/window.activeTextEditor.selection))}))
+
 (defn selection-and-current-forms []
-  (let [document vscode/window.activeTextEditor.document
-        selection vscode/window.activeTextEditor.selection
-        [start end :as selection-range] (range->offsets selection)
+  (let [{selection-range :range selection-content :content} (selection)
         current-form (current-form)]
     (merge {:current-top-level-form (current-top-level-form)
             :current-form current-form}
-           (cond
-             (= start end)
-             {:selection :no-selection}
-             (= selection-range (:range  current-form))
+           (if (= selection-range (:range  current-form))
              {:selection :current-form}
-             :else
              {:selection {:range selection-range
-                          :content (-> document (.getText selection))}}))))
+                          :content selection-content}}))))
 
 (defn current-ns []
   (let [[namespace ns-form] (calva/document.getNamespaceAndNsForm)]

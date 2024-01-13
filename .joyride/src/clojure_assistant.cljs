@@ -7,6 +7,8 @@
             [joyride.core :as joyride]
             [promesa.core :as p]))
 
+(def assistant-name "Backseat Driver")
+
 (defonce ^:private openai (openai/OpenAI.))
 
 (def ^:private gpt4 "gpt-4-1106-preview")
@@ -98,14 +100,17 @@
                                                      :placeHolder "Something something"
                                                      :ignoreFocusOut true})
               _ (log-ln "Me:" input)
+              augmented-input (str (prompts/system-and-context-instructions)
+                                   "\n\n---\nINPUT FROM THE USER:\n"
+                                   input)
               _message (openai.beta.threads.messages.create (.-id thread)
                                                             (clj->js {:role "user"
-                                                                      :content input}))
+                                                                      :content augmented-input}))
               #_#__ (def _message _message)
               run (openai.beta.threads.runs.create
                    (.-id thread)
                    (clj->js {:assistant_id (.-id assistant)
-                             :instructions (prompts/system-and-context-instructions)
+                             #_#_:instructions (prompts/system-and-context-instructions)
                              :model gpt4}))
               api-messages (retrieve-poller+ thread run)
               clj-messages (->clj (-> api-messages .-body .-data))
@@ -131,7 +136,7 @@
         #_(def api-messages api-messages)
         (log-ln "")
         (doseq [text message-texts]
-          (log-ln "Assistant:")
+          (log-ln (str assistant-name ":"))
           (log-ln text))
         new-messages)
       (p/catch (fn [e] (println "ERROR: " e "\n")))))
