@@ -6,3 +6,9 @@
   * Image descriptions, Mermaid if it is a diagram
 * Give it a search 
 * Give it access to Joyride?
+
+* Save logs of all conversations somewhere
+
+## Clojure Assistant suggests:
+
+Given the nature of this project, it might also include custom REPL interactions, intelligent navigation, code analysis, and leveraging the AI model for context-aware assistance. 

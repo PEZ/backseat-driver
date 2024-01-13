@@ -1,5 +1,10 @@
 What's the function of the temperature parameter? WHat's the min/max?
+* Krativitetsnivå. Min 0, Max 1, default 0,5
 
-When should you use the Assistant API over Completions?
+När borde man använda Assistant API i stället för Completions?
 
-Sometimes the calls take for literally ever, should it be wrapped in a timeout?
+Hur hanterar man att det tar väldigt lång tid att få svar ibland?
+
+Jag lyckas inte få Assistant att tillförlitligt fatta att jag skickar kontext
+via instruktionerna. Är det fel sätt att göra det?
+
