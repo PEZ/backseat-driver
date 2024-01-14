@@ -5,6 +5,8 @@
             [backseat-driver.prompts :as prompts]
             [backseat-driver.fs :as bd-fs]
             [backseat-driver.context :as context]
+            [backseat-driver.threads :as threads]
+            [backseat-driver.util :as util]
             [joyride.core :as joyride]
             [promesa.core :as p]))
 
@@ -35,8 +37,6 @@
 (defn log-one [message]
   (-> (:channel @!db) (.append message)))
 
-(defn ->clj [o] (js->clj o :keywordize-keys true))
-
 (defn- clear-disposables! []
   (run! (fn [disposable]
           (.dispose disposable))
@@ -64,51 +64,13 @@
     (.update global-state assistant-storage-key assistant-id)
     assistant))
 
-
-(def ^:private threads-storage-key "backseat-driver-threads")
-
-(defn retrieve-saved-threads []
-  (let [workspace-state (-> (joyride/extension-context) .-workspaceState)]
-    (-> (.get workspace-state threads-storage-key #js {}) ->clj)))
-
-(defn save-thread!+
-  [thread title]
-  (let [stored-threads (js->clj (retrieve-saved-threads))
-        threads (assoc stored-threads (.-id thread) {:thread-id (.-id thread)
-                                                     :created-at (.-created_at thread)
-                                                     :updated-at (-> (js/Date.) .getTime)
-                                                     :title title})
-        workspace-state (-> (joyride/extension-context) .-workspaceState)]
-    (.update workspace-state threads-storage-key (clj->js threads))))
-
-(defn- ->vec-sort-vals-by [m f]
-  (->> m
-       vals
-       (sort-by f)
-       vec))
-
-(defn retrieve-saved-threads-sorted []
-  (-> (retrieve-saved-threads)
-      (->vec-sort-vals-by :created-at)))
-
-(comment
-  (init!)
-  (-> (joyride/extension-context) .-workspaceState (.update "backseat-driver-threads" js/undefined))
-  (save-thread!+ #js {:id "foo" :created_at (js/Date.) :something "something too"}
-                 "My Foo Thread")
-  (save-thread!+ #js {:id "bar" :created_at (js/Date.) :something "something too"}
-                 "A BAR THREAD")
-  (retrieve-saved-threads)
-  (retrieve-saved-threads-sorted)
-  :rcf)
-
 (defn init! []
   (clear-disposables!)
   (reset! !db default-db)
   (swap! !db assoc :assistant+ (get-or-create-assistant!+))
   (p/let [thread (openai.beta.threads.create)]
     (swap! !db assoc :thread+ thread)
-    (save-thread!+ thread nil))
+    (threads/save-thread!+ thread nil))
   (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")]
     (push-disposable channel)
     (swap! !db assoc :channel channel)))
@@ -124,7 +86,7 @@
                        (p/let [retrieved-js (openai.beta.threads.runs.retrieve
                                              (.-id thread)
                                              (.-id run))
-                               retrieved (->clj retrieved-js)
+                               retrieved (util/->clj retrieved-js)
                                _ (def retrieved retrieved)
                                messages (openai.beta.threads.messages.list (.-id thread))
                                status (:status retrieved)]
@@ -147,12 +109,12 @@
        (retriever 0)))))
 
 (defn ask!+ []
-  (def instructions (prompts/system-and-context-instructions))
+  (def instructions prompts/system-instructions)
   (-> (:channel @!db) (.show true))
   (swap! !db assoc :interrupted? false)
   (-> (p/let [assistant (:assistant+ @!db)
               thread (:thread+ @!db)
-              storage-thread (get (retrieve-saved-threads) (keyword (.-id thread)))
+              storage-thread (get (threads/retrieve-saved-threads) (keyword (.-id thread)))
               _ (def thread thread)
               input (vscode/window.showInputBox #js {:prompt "What do you want say to the assistant?"
                                                      :placeHolder "Something something"
@@ -161,9 +123,10 @@
         (when-not (= js/undefined input)
           (p/let
            [_ (log-ln "\nMe:" input)
+            include-file-content? (not (:title storage-thread))
             _ (when-not (:title storage-thread)
-                (save-thread!+ thread (subs input 0 120)))
-            augmented-input (prompts/augmented-user-input input)
+                (threads/save-thread!+ thread (subs input 0 120)))
+            augmented-input (prompts/augmented-user-input input include-file-content?)
             _ (def augmented-input augmented-input)
             _message (openai.beta.threads.messages.create (.-id thread)
                                                           (clj->js {:role "user"
@@ -172,10 +135,12 @@
             run (openai.beta.threads.runs.create
                  (.-id thread)
                  (clj->js {:assistant_id (.-id assistant)
-                           :instructions (prompts/system-and-context-instructions)
+                           :instructions (prompts/system-and-context-instructions
+                                          include-file-content?)
                            :model gpt4}))
             api-messages (retrieve-poller+ thread run)
-            clj-messages (->clj (-> api-messages .-body .-data))
+            _ (def api-messages api-messages)
+            clj-messages (util/->clj (-> api-messages .-body .-data))
             _ (def clj-messages clj-messages)
             new-messages (if-let [last-created-at (some-> @!db :last-message :created_at)]
                            (filter #(and (> (:created_at %) last-created-at)
@@ -189,13 +154,7 @@
             message-texts (map (fn [m]
                                  (-> m :content first :text :value))
                                new-messages)
-            _ (def message-texts message-texts)
-            _ (def clj-messages clj-messages)
-            pprinted-messages (-> new-messages
-                                  pr-str
-                                  calva/pprint.prettyPrint
-                                  .-value)]
-            #_ (def api-messages api-messages)
+            _ (def message-texts message-texts)]
             (log-ln "")
             (doseq [text message-texts]
               (log-ln (str assistant-name ":"))
@@ -212,6 +171,7 @@
   (swap! !db assoc :interrupted? false)
   @!db
   (println (-> @!db :next-last-message :content first :text :value))
+  (println (-> @!db :last-message :content first :text :value))
   :rcf)
 
 (defn- my-main []
