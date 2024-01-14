@@ -1,41 +1,19 @@
 (ns workspace-activate
   (:require [joyride.core :as joyride]
-            ["vscode" :as vscode]
             [backseat-driver.app]))
 
-(defonce !db (atom {:disposables []}))
+;; This script only initializes the Backseat Driver app,
+;; It must be done before any keyboard shortcuts for the app works.
+;; See backseat-driver.app for a sample shortcut binding
 
-;; To make the activation script re-runnable we dispose of
-;; event handlers and such that we might have registered
-;; in previous runs.
-(defn- clear-disposables! []
-  (run! (fn [disposable]
-          (.dispose disposable))
-        (:disposables @!db))
-  (swap! !db assoc :disposables []))
+;; The app is intended to be a global (User) script.
+;; Try it out as a workspace script first, and if you want
+;; to use it in your projects, see README.md for how to install
+;; it as a User script.
 
-;; Pushing the disposables on the extension context's
-;; subscriptions will make VS Code dispose of them when the
-;; Joyride extension is deactivated.
-(defn- push-disposable [disposable]
-  (swap! !db update :disposables conj disposable)
-  (-> (joyride/extension-context)
-      .-subscriptions
-      (.push disposable)))
-
-(defn- my-main []
-  (println "Hello World, from my-main workspace_activate.cljs script")
-  (clear-disposables!)
-  (backseat-driver.app/init!)
-  #_(push-disposable
-   ;; It might surprise you to see how often and when this happens,
-   ;; and when it doesn't happen.
-   (vscode/workspace.onDidOpenTextDocument
-    (fn [doc]
-      (println "[Joyride example]"
-               (.-languageId doc)
-               "document opened:"
-               (.-fileName doc))))))
+(defn- -main []
+  (println "Hello World, from Backseat Driver demo workspace_activate.cljs script")
+  (backseat-driver.app/init!))
 
 (when (= (joyride/invoked-script) joyride/*file*)
-  (my-main))
+  (-main))

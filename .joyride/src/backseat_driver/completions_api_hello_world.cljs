@@ -7,6 +7,9 @@
             [promesa.core :as p]
             [backseat-driver.brave :as brave]))
 
+;; Basically the OpenAI API Quick Start stuff
+;; It is not part of the app
+
 (defn ->clj [o] (js->clj o :keywordize-keys true))
 
 (comment

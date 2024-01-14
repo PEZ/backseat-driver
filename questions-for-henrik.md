@@ -10,3 +10,5 @@ via instruktionerna. Är det fel sätt att göra det?
 
 När jag skickar contextet via user message hittar botten det alltid, men den blir också mycket, mycket dyrare i API-kostnade. Kanske 100x, kanske mer...
 * Eller, det kan ha varit att jag skickade något binärt skräp, API:et slutade fungera i någon timme.
+
+Hur funkar code-interpreter?

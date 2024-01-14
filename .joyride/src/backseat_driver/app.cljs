@@ -7,6 +7,12 @@
             [joyride.core :as joyride]
             [promesa.core :as p]))
 
+;; == Keyboard shortcuts
+    ;; {
+    ;;     "key": "ctrl+alt+,",
+    ;;     "command": "joyride.runCode",
+    ;;     "args": "(backseat-driver.app/please-advice!)",
+    ;; },
 
 (defn- clear-disposables! []
   (run! (fn [disposable]
@@ -30,3 +36,6 @@
   (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")]
     (push-disposable channel)
     (swap! db/!db assoc :channel channel)))
+
+(defn please-advice! []
+  (assistants/ask!+))

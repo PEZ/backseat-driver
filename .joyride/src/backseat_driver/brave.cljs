@@ -4,6 +4,8 @@
             [promesa.core :as p]
             ["vscode" :as vscode]))
 
+;; Super WIP stuff (or abandoned, I haven't decided)
+
 (defn- ->clj [o] (js->clj o :keywordize-keys true))
 
 (defn store-brave-key []
