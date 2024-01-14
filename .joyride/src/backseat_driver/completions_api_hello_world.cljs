@@ -1,11 +1,11 @@
-(ns backseat-driver.openai-hello
+(ns backseat-driver.completions-api-hello-world
   (:require ["axios" :as axios]
             ["vscode" :as vscode]
             ["openai" :as openai]
             [clojure.string :as string]
             [joyride.core :as joyride]
             [promesa.core :as p]
-            [backseat-driver.brave]))
+            [backseat-driver.brave :as brave]))
 
 (defn ->clj [o] (js->clj o :keywordize-keys true))
 

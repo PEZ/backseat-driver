@@ -1,7 +1,7 @@
 (ns workspace-activate
   (:require [joyride.core :as joyride]
             ["vscode" :as vscode]
-            [backseat-driver.assistant]))
+            [backseat-driver.app]))
 
 (defonce !db (atom {:disposables []}))
 
@@ -26,7 +26,7 @@
 (defn- my-main []
   (println "Hello World, from my-main workspace_activate.cljs script")
   (clear-disposables!)
-  (backseat-driver.assistant/init!)
+  (backseat-driver.app/init!)
   #_(push-disposable
    ;; It might surprise you to see how often and when this happens,
    ;; and when it doesn't happen.

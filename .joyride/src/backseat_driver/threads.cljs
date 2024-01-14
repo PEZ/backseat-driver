@@ -1,7 +1,5 @@
 (ns backseat-driver.threads
-  (:require ["vscode" :as vscode]
-            [joyride.core :as joyride]
-            [backseat-driver.fs :as bd-fs]
+  (:require [joyride.core :as joyride]
             [backseat-driver.util :as util]))
 
 
