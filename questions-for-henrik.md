@@ -1,7 +1,13 @@
 What's the function of the temperature parameter? WHat's the min/max?
-* Kreativitetsnivå. Min 0, Max 1, default 0,5
+* Kreativitetsnivå. Min 0, Max 1, default 0,5 <-- hallucination
+* 0 -> 2, default 1
+
+0 => Alltid samma svar, för kod kan det vara bra
+(Kan också ses som förutsägbarhet)
 
 När borde man använda Assistant API i stället för Completions?
+
+json mode
 
 Hur hanterar man att det tar väldigt lång tid att få svar ibland?
 
