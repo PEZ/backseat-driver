@@ -27,19 +27,25 @@
       .-subscriptions
       (.push disposable)))
 
-(defn new-thread!+ []
+(defn- create-channel! []
+  (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")
+        old-channel (:channel @db/!db)]
+    (when old-channel
+      (.dispose old-channel))
+    (push-disposable channel)
+    (swap! db/!db assoc :channel channel)))
+
+(defn new-thread! []
   (p/let [thread (openai-api/openai.beta.threads.create)]
     (swap! db/!db assoc :thread+ thread)
-    (threads/save-thread!+ thread nil nil)))
+    (threads/save-thread!+ thread nil nil)
+    (create-channel!)))
 
 (defn init! []
   (clear-disposables!)
   (db/init-db!)
   (swap! db/!db assoc :assistant+ (assistants/get-or-create-assistant!+))
-  (new-thread!+)
-  (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")]
-    (push-disposable channel)
-    (swap! db/!db assoc :channel channel))
+  (new-thread!)
   (push-disposable (ui/add-assist-button!)))
 
 (defn please-advice! []
