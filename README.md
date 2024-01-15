@@ -1,10 +1,12 @@
 ## Backseat Driver
 
-A VS Code Clojure Coding Assistant, Riding Shotgun.
+The Hackable VS Code AI Assistant.
 
 ## What is this?
 
-Backseat Driver is a ChatGPT client for VS Code, similar in concept to the GitHub CoPilot extension, but much, much simpler, and with a focus on helping with Clojure and ClojureScript coding. It is written as a Joyride script.
+**Backseat Driver** is a ChatGPT API client for VS Code, similar in concept to the chat part of the **GitHub CoPilot** extension, but much, much simpler.
+
+It best supports [Clojure](https://clojure.org) and [ClojureScript](https://clojurescript.org) coding, but can assist with anything code crafting related. Besdies. And it's a [Joyride](https://github.com/BetterThanTomorrow/joyride) script, so _you can hack in support_ for your language of choice.
 
 WIP: Or even just a proof of concept for now. But it works!
 
@@ -14,8 +16,8 @@ https://github.com/PEZ/backseat-driver/assets/30010/57c4922d-495c-4ad0-9b61-2767
 To use it you will need:
 
 * VS Code
-* The [Joyride](https://github.com/BetterThanTomorrow/joyride) extension
-* The [Calva](https://calva.io) extension (Backseat Driver depends on some [Calva API:s](https://calva.io/api/))
+* The [Joyride](https://marketplace.visualstudio.com/items?itemName=betterthantomorrow.joyride) extension
+* The [Calva](https://marketplace.visualstudio.com/items?itemName=betterthantomorrow.calva) extension (Backseat Driver depends on some [Calva API:s](https://calva.io/api/))
 * The `npm` command line tool (probably you want to have Nodejs installed, even if Nodejs is not a direct dependency for the script)
 * An OpenAI API key available in your environment as `OPENAI_API_KEY`
   * As per the [Setup your API key for all projects](https://platform.openai.com/docs/quickstart/step-2-setup-your-api-key) on the OpenAI Platform site.
@@ -35,7 +37,7 @@ Backseat Driver is meant to be a global (User) Joyride script, so that it is ava
     {
         "key": "ctrl+alt+,",
         "command": "joyride.runCode",
-        "args": "(backseat-driver.app/please-advice!)",
+        "args": "(backseat Driver.app/please-advice!)",
     },
    ```
 
@@ -51,7 +53,7 @@ To ask Backseat Driver for advice, press <kbd>ctrl</kbd>+<kbd>alt/option</kbd>+<
 
 ### The Backseat Driver Menu
 
-In the status bar you will have a button titled **Backseat** which opens up the Backseat Driver menu. It lets you:
+In the status bar you will have a button titled **Backseat Driver** which opens up the Backseat Driver menu. It lets you:
 
 * Ask the AI for assistance
 * Start a new chat session
@@ -59,7 +61,7 @@ In the status bar you will have a button titled **Backseat** which opens up the 
 
 ### Tips
 
-In the demo above I have placed the Backseat Driver output channel in the **Secondary Sidebar**. (Search for it in the Command Palette if you're not in the know).
+In the demo above I have placed the Backseat output channel in the **Secondary Sidebar**. (Search for it in the Command Palette if you're not in the know).
 
 To show the channel at will you can bind a keyboard shortcut, like so:
 
@@ -67,17 +69,17 @@ To show the channel at will you can bind a keyboard shortcut, like so:
     {
         "key": "ctrl+alt+a ctrl+alt+a",
         "command": "joyride.runCode",
-        "args": "(backseat-driver.ui/show-channel!)",
+        "args": "(backseat.ui/show-channel!)",
     },
 ```
 
 NB: Since it's Joyride you can script yourself a menu or a statusbar button for things like this too.
 
-## Happy Backseat Driver assisted coding!
+## Happy Backseat assisted coding!
 
 Issues welcome.
 
-Since this is a Joyride script, it is meant that you adapt it to your needs. But if you add things that you think are generally useful, please don't hesitate to tell me about it in an issue, and we can discuss about if it should be a pull request.
+Since this is a Joyride script, it is meant that you adapt it to your needs. If you add things that you think are generally useful, please don't hesitate to tell me about it in an issue, and we can discuss about if it should be a pull request on this repo.
 
 See typos? Please PR.
 
