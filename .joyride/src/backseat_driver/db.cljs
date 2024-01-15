@@ -5,7 +5,8 @@
                            :thread+ nil
                            :last-message nil
                            :channel nil
-                           :interrupted? false})
+                           :interrupted? false
+                           :channel-shown? false})
 
 (defonce !db (atom nil))
 

@@ -76,7 +76,7 @@
     run (openai-api/openai.beta.threads.runs.create
          (.-id thread)
          (clj->js {:assistant_id (.-id assistant)
-                   :model gpt4}))]
+                   :model gpt3}))]
     (retrieve-poller+ thread run)))
 
 (defn- new-assistant-messages [clj-messages last-created-at]
@@ -95,9 +95,10 @@
   (swap! db/!db assoc :interrupted? false)
   (-> (p/let [assistant (:assistant+ @db/!db)
               thread (:thread+ @db/!db)
-              input (vscode/window.showInputBox #js {:prompt "What do you want say to the assistant?"
-                                                     :placeHolder "Something something"
-                                                     :ignoreFocusOut true})]
+              input (vscode/window.showInputBox
+                     #js {:prompt "What do you want say to the assistant?"
+                          :placeHolder "Something something"
+                          :ignoreFocusOut true})]
         (when-not (= js/undefined input)
           (p/let [_ (ui/user-says! input)
                   _ (threads/maybe-add-title!? thread input)
