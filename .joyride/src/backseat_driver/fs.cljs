@@ -22,4 +22,4 @@
   (def content "hello")
   (write-to-file!+ (path/join (os/tmpdir) "backseat-driver.log") content)
   (append-to-log "This is a log entry.\n")
-  )
+  :rcf)

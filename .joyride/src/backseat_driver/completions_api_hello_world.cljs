@@ -20,9 +20,8 @@
       :document
       :positionAt
       (apply [561])
-      .-e
-      )
-  )
+      .-e)
+  :rcf)
 
 (defonce openai (openai/OpenAI.))
 

@@ -81,7 +81,7 @@
 
 (defn- new-assistant-messages [clj-messages last-created-at]
   (if last-created-at
-   (filter #(and (> (:created_at %) last-created-at)
+    (filter #(and (> (:created_at %) last-created-at)
                   (= (:role %) "assistant"))
             clj-messages)
     (filter #(= (:role %) "assistant")
