@@ -12,3 +12,14 @@ När jag skickar contextet via user message hittar botten det alltid, men den bl
 * Eller, det kan ha varit att jag skickade något binärt skräp, API:et slutade fungera i någon timme.
 
 Hur funkar code-interpreter?
+
+
+Knasiga svar ibland:
+
+```
+Me: Hellio
+....
+
+Backseat Driver:
+It looks like you're trying to enter some input. Is there anything specific you would like assistance with?
+```
