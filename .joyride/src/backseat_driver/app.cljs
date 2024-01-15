@@ -38,4 +38,4 @@
     (swap! db/!db assoc :channel channel)))
 
 (defn please-advice! []
-  (assistants/ask!+))
+  (assistants/advice!+))

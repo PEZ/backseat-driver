@@ -1,7 +1,6 @@
 (ns backseat-driver.db)
 
-(def ^:private default-db {:openai nil
-                           :disposables []
+(def ^:private default-db {:disposables []
                            :assistant+ nil
                            :thread+ nil
                            :last-message nil
