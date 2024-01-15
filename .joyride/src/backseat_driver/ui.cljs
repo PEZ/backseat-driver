@@ -44,6 +44,9 @@
 (defn create-new-session!+ []
   (vscode/commands.executeCommand "joyride.runCode" "(backseat-driver.app/new-session!)"))
 
+(defn interrupt-polling! []
+  (swap! db/!db assoc :interrupted? true))
+
 (def assist-button-id "backseat-driver-assist-me-button")
 
 (defn show-palette! []
@@ -51,6 +54,8 @@
                 (clj->js [{:label "Advice Me"
                            :description "Ask Backseat Driver for assistance"
                            :function ask-for-assistance!+}
+                          {:label "Stop waiting for response"
+                           :function interrupt-polling!}
                           {:label "Start new session"
                            :function create-new-session!+}
                           {:label "Show Output Channel"
