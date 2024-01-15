@@ -1,5 +1,6 @@
 (ns backseat-driver.ui
-  (:require [backseat-driver.db :as db]))
+  (:require ["vscode" :as vscode]
+            [backseat-driver.db :as db]))
 
 (def assistant-name "Backseat Driver")
 
@@ -35,3 +36,21 @@
 
 (defn user-says! [text]
   (say-ln! "\nMe:" text))
+
+(def assist-button-id "backseat-driver-assist-me-button")
+
+(defn add-assist-button! []
+  (let [item (vscode/window.createStatusBarItem assist-button-id
+                                                vscode/StatusBarAlignment.Right
+                                                10000)]
+    (set! (.-text item) "BD Assist!")
+    (set! (.-command item)
+          (clj->js {:command "joyride.runCode"
+                    :arguments ["(backseat-driver.app/please-advice!)"]}))
+    (.show item)
+    item))
+
+(comment
+  (add-assist-button!)
+  :rcf)
+

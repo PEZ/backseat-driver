@@ -5,7 +5,8 @@
             [backseat-driver.assistants :as assistants]
             [backseat-driver.threads :as threads]
             [joyride.core :as joyride]
-            [promesa.core :as p]))
+            [promesa.core :as p]
+            [backseat-driver.ui :as ui]))
 
 ;; == Keyboard shortcuts
     ;; {
@@ -35,7 +36,12 @@
     (threads/save-thread!+ thread nil nil))
   (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")]
     (push-disposable channel)
-    (swap! db/!db assoc :channel channel)))
+    (swap! db/!db assoc :channel channel))
+  (push-disposable (ui/add-assist-button!)))
 
 (defn please-advice! []
   (assistants/advice!+))
+
+(comment
+  (init!)
+  :rcf)
