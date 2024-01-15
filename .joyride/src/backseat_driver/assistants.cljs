@@ -38,34 +38,37 @@
 (def ^:private  poll-interval 100)
 
 (defn- retrieve-poller+ [thread run]
-  (p/create
-   (fn [resolve reject]
-     (let [retriever (fn retriever [tries]
-                       (ui/say-one ".")
-                       (p/let [retrieved-js (openai-api/openai.beta.threads.runs.retrieve
-                                             (.-id thread)
-                                             (.-id run))
-                               retrieved (util/->clj retrieved-js)
-                               messages (openai-api/openai.beta.threads.messages.list (.-id thread))
-                               status (:status retrieved)]
-                         (if (done-statuses status)
-                           (do
-                             (ui/say-ln! "")
-                             (when-not (= "completed" status)
-                               (ui/say-ln! "status:" status)
-                               (println "status:" status)
-                               (println retrieved)
-                               (bd-fs/append-to-log (pr-str retrieved)))
-                             (resolve messages))
-                           (if (:interrupted? @db/!db)
-                             (do
-                               (swap! db/!db assoc :interrupted? false)
-                               (openai-api/openai.beta.threads.runs.cancel (.-id thread) (.-id run))
-                               (reject :interrupted))
-                             (js/setTimeout
-                              #(retriever (inc tries))
-                              poll-interval)))))]
-       (retriever 0)))))
+  (swap! db/!db assoc :thread-running? true)
+  (-> (p/create
+       (fn [resolve reject]
+         (let [retriever (fn retriever [tries]
+                           (ui/say-one ".")
+                           (p/let [retrieved-js (openai-api/openai.beta.threads.runs.retrieve
+                                                 (.-id thread)
+                                                 (.-id run))
+                                   retrieved (util/->clj retrieved-js)
+                                   messages (openai-api/openai.beta.threads.messages.list (.-id thread))
+                                   status (:status retrieved)]
+                             (if (done-statuses status)
+                               (do
+                                 (ui/say-ln! "")
+                                 (when-not (= "completed" status)
+                                   (ui/say-ln! "status:" status)
+                                   (println "status:" status)
+                                   (println retrieved)
+                                   (bd-fs/append-to-log (pr-str retrieved)))
+                                 (resolve messages))
+                               (if (:interrupted? @db/!db)
+                                 (p/do
+                                   (swap! db/!db assoc :interrupted? false)
+                                   (openai-api/openai.beta.threads.runs.cancel (.-id thread) (.-id run))
+                                   (reject :interrupted))
+                                 (js/setTimeout
+                                  #(retriever (inc tries))
+                                  poll-interval)))))]
+           (retriever 0))))
+      (p/finally (fn []
+                   (swap! db/!db assoc :thread-running? false)))))
 
 (defn- call-assistance!+ [assistant thread input]
   (p/let

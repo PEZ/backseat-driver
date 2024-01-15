@@ -5,6 +5,7 @@
                            :thread+ nil
                            :last-message nil
                            :channel nil
+                           :thread-running? false
                            :interrupted? false
                            :channel-shown? false})
 

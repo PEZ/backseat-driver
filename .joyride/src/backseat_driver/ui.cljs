@@ -51,16 +51,23 @@
 
 (defn show-palette! []
   (p/let [pick (vscode/window.showQuickPick
-                (clj->js [{:label "Advice Me"
-                           :description "Ask Backseat Driver for assistance"
-                           :function ask-for-assistance!+}
-                          {:label "Stop waiting for response"
-                           :function interrupt-polling!}
-                          {:label "Start new session"
-                           :function create-new-session!+}
-                          {:label "Show Output Channel"
-                           :description "Shows the output channel (our conversation)"
-                           :function show-channel!}]))]
+                (clj->js (cond-> []
+                           :always
+                           (into
+                            [{:label "Advice Me"
+                              :description "Ask Backseat Driver for assistance"
+                              :function ask-for-assistance!+}])
+
+                           (:thread-running? @db/!db)
+                           (into [{:label "Stop waiting for response"
+                                   :function interrupt-polling!}])
+
+                           :always
+                           (into [{:label "Start new session"
+                                   :function create-new-session!+}
+                                  {:label "Show Output Channel"
+                                   :description "Shows the output channel (our conversation)"
+                                   :function show-channel!}]))))]
     (when pick
       ((.-function pick)))))
 
