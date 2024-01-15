@@ -14,8 +14,8 @@ in libraries, the VS Code API, nodejs, and npm, and how to leverage that.
 In these instructions, “code” refers to the code the user is working with, not the
 Editor. We refer to the editor as “VS Code”.
 
-The Joyride script is referred to as `bsd-client`, and you may find notes from the
-script annotated with `bsd-client-note`.
+The Joyride script is referred to as `bd-lient`, and you may find notes from the
+script annotated with `bd-lient-note`.
 
 When you find constructs like `(def foo foo)` inside functions, it is most often
 not a mistake, but a common debugging practice called “Inline defs”. It binds
@@ -35,15 +35,15 @@ When the user refers to things like 'it', 'this', 'here',
 etcetera, it is probably the current code context that is referred to.
 
 The context will be provided as markdown with EDN maps containing the actual
-code and range information, and such. The maps may contain notes from bsd-client,
-keyed at `:bsd-client-note`.
+code and range information, and such. The maps may contain notes from bd-lient,
+keyed at `:bd-lient-note`.
 ")
 
 (defn clojure-instruction-lines [include-file-content?]
   ["## Clojure context"
    ""
    "This context contains maps with information about the context."
-   "The maps may contain notes from bsd-client keyed at `:bsd-client-note`."
+   "The maps may contain notes from bd-lient keyed at `:bd-lient-note`."
    ""
    "The users current Clojure code context is:"
    ""

@@ -20,17 +20,17 @@
 
 (defn current-form []
   (assoc (range-response->clj (calva/ranges.currentForm))
-         :bsd-client-note "Apply your knowledge about the significance of the current form."))
+         :bd-lient-note "Apply your knowledge about the significance of the current form."))
 
 (defn current-enclosing-form []
   (assoc (range-response->clj (calva/ranges.currentEnclosingForm))
-         :bsd-client-note "The current enclosing form is the list/etc that the user is typing into.
+         :bd-lient-note "The current enclosing form is the list/etc that the user is typing into.
                            Together with the current selection, this can help you figure out what
                            the user is up to."))
 
 (defn current-top-level-form []
   (assoc (range-response->clj (calva/ranges.currentTopLevelForm))
-         :bsd-client-note "The current top level form is typically the current function definition.
+         :bd-lient-note "The current top level form is typically the current function definition.
                            Or some other definition (`def` or, often some macro starting with `def`).
                            If it doesn't look like a definition, it could be some testing code,
                            often inside a rich comment form."))
@@ -39,7 +39,7 @@
   (let [document vscode/window.activeTextEditor.document]
     {:range (range->offsets vscode/window.activeTextEditor.selection)
      :content (-> document (.getText vscode/window.activeTextEditor.selection))
-     :bsd-client-note "If the selection is larger than the top level form,
+     :bd-lient-note "If the selection is larger than the top level form,
                        the current forms are probably less significant"}))
 
 (def max-file-size 20000)
@@ -52,7 +52,7 @@
        :content text}
       {:range [0 size]
        :content (subs text 0 max-file-size)
-       :bsd-client-note "The content is truncated to the max file size of 200000 characters."})))
+       :bd-lient-note "The content is truncated to the max file size of 200000 characters."})))
 
 (defn selection-and-current-forms [include-file-content?]
   (let [{selection-range :range selection-content :content} (selection)
