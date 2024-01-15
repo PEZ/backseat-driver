@@ -1,6 +1,8 @@
 (ns backseat-driver.ui
   (:require ["vscode" :as vscode]
-            [backseat-driver.db :as db]))
+            [backseat-driver.assistants :as assistants]
+            [backseat-driver.db :as db]
+            [promesa.core :as p]))
 
 (def assistant-name "Backseat Driver")
 
@@ -39,14 +41,25 @@
 
 (def assist-button-id "backseat-driver-assist-me-button")
 
+(defn show-palette! []
+  (p/let [pick (vscode/window.showQuickPick
+                (clj->js [{:label "Advice Me"
+                           :description "Ask Backseat Driver for assistance"
+                           :function #'assistants/advice!+}
+                          {:label "Show Output Channel"
+                           :description "Shows the output channel (our conversation)"
+                           :function #'show-channel!}]))]
+    (when pick
+      ((.-function pick)))))
+
 (defn add-assist-button! []
   (let [item (vscode/window.createStatusBarItem assist-button-id
                                                 vscode/StatusBarAlignment.Right
                                                 10000)]
-    (set! (.-text item) "BD Assist!")
+    (set! (.-text item) "Backseat")
     (set! (.-command item)
           (clj->js {:command "joyride.runCode"
-                    :arguments ["(backseat-driver.app/please-advice!)"]}))
+                    :arguments ["(backseat-driver.ui/show-palette!)"]}))
     (.show item)
     item))
 

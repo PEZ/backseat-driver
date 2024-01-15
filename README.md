@@ -49,6 +49,13 @@ Your conversation with Backseat Driver will be printed in the **Backseat Driver*
 
 To ask Backseat Driver for advice, press <kbd>ctrl</kbd>+<kbd>alt/option</kbd>+<kbd>,</kbd>. You should expect it to work like in the demo video above.
 
+### The Backseat Driver Menu
+
+In the status bar you will have a button titled **Backseat** which opens up the Backseat Driver menu. It lets you:
+
+* Ask the AI for assistance
+* Show the output channel
+
 ### Tips
 
 In the demo above I have placed the Backseat Driver output channel in the **Secondary Sidebar**. (Search for it in the Command Palette if you're not in the know).
