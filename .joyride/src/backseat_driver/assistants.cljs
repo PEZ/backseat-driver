@@ -60,6 +60,7 @@
                            (if (:interrupted? @db/!db)
                              (do
                                (swap! db/!db assoc :interrupted? false)
+                               (openai-api/openai.beta.threads.runs.cancel (.-id thread) (.-id run))
                                (reject :interrupted))
                              (js/setTimeout
                               #(retriever (inc tries))
