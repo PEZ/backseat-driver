@@ -54,6 +54,7 @@ To ask Backseat Driver for advice, press <kbd>ctrl</kbd>+<kbd>alt/option</kbd>+<
 In the status bar you will have a button titled **Backseat** which opens up the Backseat Driver menu. It lets you:
 
 * Ask the AI for assistance
+* Start a new chat session
 * Show the output channel
 
 ### Tips

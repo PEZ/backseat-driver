@@ -41,8 +41,8 @@
 (defn ask-for-assistance!+ []
   (vscode/commands.executeCommand "joyride.runCode" "(backseat-driver.app/please-advice!)"))
 
-(defn create-new-conversation!+ []
-  (vscode/commands.executeCommand "joyride.runCode" "(backseat-driver.app/new-thread!)"))
+(defn create-new-session!+ []
+  (vscode/commands.executeCommand "joyride.runCode" "(backseat-driver.app/new-session!)"))
 
 (def assist-button-id "backseat-driver-assist-me-button")
 
@@ -51,8 +51,8 @@
                 (clj->js [{:label "Advice Me"
                            :description "Ask Backseat Driver for assistance"
                            :function ask-for-assistance!+}
-                          {:label "Start new conversation"
-                           :function create-new-conversation!+}
+                          {:label "Start new session"
+                           :function create-new-session!+}
                           {:label "Show Output Channel"
                            :description "Shows the output channel (our conversation)"
                            :function show-channel!}]))]
