@@ -55,8 +55,8 @@
 (defonce !messages (atom start-messages))
 
 
-(defn ask-chatgpt! []
-  (-> (p/let [input (vscode/window.showInputBox)
+(defn ask-chatgpt! [input]
+  (-> (p/let [;input (vscode/window.showInputBox)
               _ (println "Me:" input "\n")
               _ (when input
                   (swap! !messages conj {:role "user"
@@ -64,7 +64,7 @@
               completion-js (openai.chat.completions.create
                              (clj->js {:messages @!messages
                                        :model "gpt-4"
-                                       :temperature 1}))
+                                       :temperature 0}))
               _ (def completion-js completion-js)
               completion (->clj completion-js)
               _ (def completion completion)
@@ -75,10 +75,12 @@
       (p/catch (fn [e] (println e "\n")))))
 
 (comment
-  (ask-chatgpt!)
+  (doseq [n (range 10)]
+    (do
+      (reset! !messages start-messages)
+      (ask-chatgpt! "Can you slay some Clojure?")))
   @!messages
   (reset! !messages (filterv #(not-empty (:content %)) @!messages))
-  (reset! !messages start-messages)
   (-> completion .-choices first)
   (->clj completion)
   :rcf)
