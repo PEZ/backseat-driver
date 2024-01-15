@@ -1,6 +1,5 @@
 (ns backseat-driver.ui
   (:require ["vscode" :as vscode]
-            [backseat-driver.assistants :as assistants]
             [backseat-driver.db :as db]
             [promesa.core :as p]))
 
@@ -39,16 +38,19 @@
 (defn user-says! [text]
   (say-ln! "\nMe:" text))
 
+(defn ask-for-assistance!+ []
+  (vscode/commands.executeCommand "joyride.runCode" "(backseat-driver.app/please-advice!)"))
+
 (def assist-button-id "backseat-driver-assist-me-button")
 
 (defn show-palette! []
   (p/let [pick (vscode/window.showQuickPick
                 (clj->js [{:label "Advice Me"
                            :description "Ask Backseat Driver for assistance"
-                           :function #'assistants/advice!+}
+                           :function ask-for-assistance!+}
                           {:label "Show Output Channel"
                            :description "Shows the output channel (our conversation)"
-                           :function #'show-channel!}]))]
+                           :function show-channel!}]))]
     (when pick
       ((.-function pick)))))
 
