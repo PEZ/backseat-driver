@@ -50,24 +50,27 @@
 (def assist-button-id "backseat-driver-assist-me-button")
 
 (defn show-palette! []
-  (p/let [pick (vscode/window.showQuickPick
-                (clj->js (cond-> []
-                           :always
-                           (into
-                            [{:label "Advice Me"
-                              :description "Ask Backseat Driver for assistance"
-                              :function ask-for-assistance!+}])
+  (p/let [items (let [thread-running? (:thread-running? @db/!db)]
+                  (cond-> []
+                    thread-running?
+                    (conj {:label "$(sync~spin) Stop waiting for response"
+                           :function interrupt-polling!})
 
-                           (:thread-running? @db/!db)
-                           (into [{:label "Stop waiting for response"
-                                   :function interrupt-polling!}])
+                    (not thread-running?)
+                    (conj {:label "Advice Me"
+                           :function ask-for-assistance!+})
 
-                           :always
-                           (into [{:label "Start new session"
-                                   :function create-new-session!+}
-                                  {:label "Show Output Channel"
-                                   :description "Shows the output channel (our conversation)"
-                                   :function show-channel!}]))))]
+                    (not thread-running?)
+                    (conj {:label "Start new session"
+                           :function create-new-session!+})
+
+                    :always
+                    (conj {:label "Show Output Channel"
+                           :function show-channel!})))
+          pick (vscode/window.showQuickPick
+                (clj->js items)
+                #js {:title "Backseat Driver"
+                     :placeHolder "Gimme the keys, I can drive!"})]
     (when pick
       ((.-function pick)))))
 
