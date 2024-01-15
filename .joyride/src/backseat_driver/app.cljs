@@ -27,13 +27,16 @@
       .-subscriptions
       (.push disposable)))
 
+(defn new-thread!+ []
+  (p/let [thread (openai-api/openai.beta.threads.create)]
+    (swap! db/!db assoc :thread+ thread)
+    (threads/save-thread!+ thread nil nil)))
+
 (defn init! []
   (clear-disposables!)
   (db/init-db!)
   (swap! db/!db assoc :assistant+ (assistants/get-or-create-assistant!+))
-  (p/let [thread (openai-api/openai.beta.threads.create)]
-    (swap! db/!db assoc :thread+ thread)
-    (threads/save-thread!+ thread nil nil))
+  (new-thread!+)
   (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")]
     (push-disposable channel)
     (swap! db/!db assoc :channel channel))
