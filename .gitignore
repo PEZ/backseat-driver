@@ -31,3 +31,9 @@ Thumbs.db
 # Etc
 .joyride/src/local_config.cljs
 bot-sessions/
+
+# Calva
+.clj-kondo/.cache/
+.lsp/.cache/
+.lsp/sqlite*.db
+.calva/output-window/
