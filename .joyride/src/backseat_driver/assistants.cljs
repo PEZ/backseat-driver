@@ -153,7 +153,7 @@
 
                                (done-statuses status)
                                (do
-                                 (println run)
+                                 (println (pr-str run))
                                  (bd-fs/append-to-log (pr-str run))
                                  (reject [thread-id run-id status] :not-completed))
 
