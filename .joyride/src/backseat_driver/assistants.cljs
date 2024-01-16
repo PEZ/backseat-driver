@@ -63,7 +63,6 @@
     assistant))
 
 (defn call-info->tool-output [call-info]
-  (def call-info call-info)
   (let [context-part (-> call-info :arguments :context-part)
         context-fn (context-part->function context-part (str "Not a valid function: " context-part))
         context (context-fn)
@@ -73,16 +72,10 @@
                                   "```clojure"
                                   (:content context)
                                   "```"])]
-    (def context-part context-part)
-    (def context-fn context-fn)
-    (def context context)
-    (def output output)
     {:tool_call_id (:call-id call-info)
-     ;; TODO: Why do we need to stringify it twice?????
      :output (pr-str output)}))
 
 (defn function-call->call-info [tool-function-call]
-  (def function-call tool-function-call)
   {:call-id (:id tool-function-call)
    :function-name (-> tool-function-call :function :name)
    :arguments (-> (-> tool-function-call :function :arguments)
@@ -90,20 +83,14 @@
                   util/->clj)})
 
 (comment
-
   (->> '({:function {:arguments "{\"context-part\":\"current-form\"}", :name "get-context"},
           :id "call_vaRD4ybll9hRLzcttSSiSbnD",
           :type "function"})
        (map function-call->call-info)
        (map call-info->tool-output))
-
-  (->> function_calls
-       (map function-call->call-info)
-       (map call-info->tool-output))
   :rcf)
 
 (defn type-function? [call]
-  (def call call)
   (= "function" (:type call)))
 
 (comment
@@ -178,16 +165,17 @@
          (let [retriever (fn retriever [tries]
                            (def tries tries)
                            (ui/say-one ".")
-                           (p/let [retrieved-js (openai-api/openai.beta.threads.runs.retrieve
+                           (p/let [retrieve-again (fn []
+                                                    (js/setTimeout
+                                                     #(retriever (inc tries))
+                                                     poll-interval))
+                                   retrieved-js (openai-api/openai.beta.threads.runs.retrieve
                                                  (.-id thread)
                                                  (.-id run))
                                    _ (def retrieved-js retrieved-js)
                                    retrieved (util/->clj retrieved-js)
-                                   _ (def retrieved retrieved)
                                    messages (openai-api/openai.beta.threads.messages.list (.-id thread))
-                                   _ (def messages messages)
-                                   status (:status retrieved)
-                                   _ (def status status)]
+                                   status (:status retrieved)]
                              (cond
                                (:interrupted? @db/!db)
                                (p/do
@@ -218,24 +206,19 @@
                                        function_calls (filter type-function? tool-calls)
                                        call-infos (map function-call->call-info function_calls)
                                        tool-outputs (map call-info->tool-output call-infos)]
-                                   (def required-action required-action)
-                                   (def tool-calls tool-calls)
-                                   (def function_calls function_calls)
-                                   (def call-infos call-infos)
-                                   (def tool-outputs tool-outputs)
-                                   (p/do
-                                     (-> (openai-api/openai.beta.threads.runs.submitToolOutputs
-                                          (.-id thread)
-                                          (.-id run)
-                                          (-> {:tool_outputs tool-outputs}
-                                              clj->js))
-                                         (p/catch (fn [error]
-                                                    (def error error)
-                                                    (js/console.error error))))
-                                     (retriever (inc tries)))))
+                                   (-> (openai-api/openai.beta.threads.runs.submitToolOutputs
+                                        (.-id thread)
+                                        (.-id run)
+                                        (-> {:tool_outputs tool-outputs}
+                                            clj->js))
+                                       (p/then (fn [_]
+                                                 (retrieve-again)))
+                                       (p/catch (fn [error]
+                                                  (ui/say-error "Submit function output failed:" error)
+                                                  (reject (str "Submit function output failed:" error)))))))
 
                                :else
-                               (retriever (inc tries)))))]
+                               (retrieve-again))))]
            (retriever 0))))
       (p/finally (fn []
                    (swap! db/!db assoc :thread-running? false)))))
