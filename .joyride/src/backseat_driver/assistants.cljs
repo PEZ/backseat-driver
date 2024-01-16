@@ -79,7 +79,7 @@
     (def output output)
     {:tool_call_id (:call-id call-info)
      ;; TODO: Why do we need to stringify it twice?????
-     :output (pr-str (pr-str output))}))
+     :output (pr-str output)}))
 
 (defn function-call->call-info [tool-function-call]
   (def function-call tool-function-call)
