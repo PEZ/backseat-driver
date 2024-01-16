@@ -32,6 +32,9 @@ and you can only ask for `current-file-path` and `current-file-content`.
 
 When the user refers to things like 'it', 'this', 'here',
 etcetera, it is probably the current code context that is referred to.
+
+The instructions will always contain the path to the users current file. You need
+to remember to look for this in the instructions.
 ")
 
 (defn clojure-instruction-lines [include-file-content?]

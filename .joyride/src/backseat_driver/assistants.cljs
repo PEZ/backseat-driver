@@ -14,6 +14,18 @@
 (def ^:private gpt4 "gpt-4-1106-preview")
 (def ^:private gpt3 "gpt-3.5-turbo-1106")
 
+
+(defn context-part->function [tool]
+  (case tool
+    "current-file-path" context/current-file
+    "current-file-content" context/current-file-content
+    "current-ns" context/current-ns
+    "current-form" context/current-form
+    "current-top-level-form" context/current-top-level-form
+    "current-enclosing-form" context/current-enclosing-form
+    "selection" context/selection
+    (fn [] (str "function doesn't exist: " tool))))
+
 (def functions [{:type "function",
                  :function
                  {:name "get-context",
@@ -97,13 +109,22 @@
                                                                   (def call call)
                                                                   (= "function" (:type call)))
                                                                 tool-calls)
-                                         call-ids (map :id function_calls)
-                                         tool-outputs {:tool_outputs (map (fn [id]
-                                                                            {:tool_call_id id
-                                                                             :output (pr-str (context/current-file-content))})
-                                                                          call-ids)}
-                                         ]
+                                         call-data (map (fn [call]
+                                                          {:call-id (:id call)
+                                                           :function-name (-> call :function :name)
+                                                           :arguments (-> (-> call :function :arguments)
+                                                                          js/JSON.parse
+                                                                          util/->clj)})
+                                                        function_calls)
+                                         tool-outputs (map (fn [call-datum]
+                                                             (let [f (context-part->function (-> call-datum :arguments :context-part))]
+                                                               {:tool_call_id (:call-id call-datum)
+                                                                :output (pr-str (f))}))
+                                                           call-data)]
                                    (def required-action required-action)
+                                   (def tool-calls tool-calls)
+                                   (def function_calls function_calls)
+                                   (def call-data call-data)
                                    (def tool-outputs tool-outputs)
                                    (openai-api/openai.beta.threads.runs.submitToolOutputs
                                     (.-id thread)
@@ -123,6 +144,36 @@
       (p/finally (fn []
                    (swap! db/!db assoc :thread-running? false)))))
 
+(comment
+  (def call-data-correct
+    [{:call-id "call_aZ1DGlNjCK22ji8O7dEYl892"
+      :function-name "get-context"
+      :arguments {:context-part "current-enclosing-form"}}])
+  (-> "{\"context-part\":\"current-enclosing-form\"}"
+      js/JSON.parse
+      util/->clj)
+
+
+  (def call-data
+    (map (fn [call]
+           {:call-id (:id call)
+            :function-name (-> call :function :name)
+            :arguments (-> (-> call :function :arguments)
+                           js/JSON.parse
+                           util/->clj)})
+         function_calls))
+
+  (def tool-outputs (map (fn [call-datum]
+                           (let [f (context-part->function (-> call-datum :arguments :context-part))]
+                             {:tool_call_id (:call-id call-datum)
+                              :output (pr-str (f))}))
+                         call-data))
+
+  (defn alltid [] (fn [] (str "function doesn't exist: " "foo")))
+  (constantly "nånting")
+
+  :rcf)
+
 (defn- call-assistance!+ [assistant thread input]
   (p/let
    [include-file-content? (threads/maybe-add-shared-file!?+ thread (:path (context/current-file)))
@@ -136,7 +187,8 @@
                    :model gpt4
                    :tools (into [#_{:type "code_interpreter"}
                                  #_{:type "retrieval"}]
-                                functions)}))]
+                                functions)
+                   :instructions (str "The users current file is: `" (context/current-file) "`")}))]
     (retrieve-poller+ thread run)))
 
 (defn- new-assistant-messages [clj-messages last-created-at]
