@@ -9,22 +9,21 @@
             [backseat-driver.ui :as ui]
             [backseat-driver.util :as util]
             [joyride.core :as joyride]
-            [promesa.core :as p]))
+            [promesa.core :as p]
+            [clojure.string :as string]))
 
 (def ^:private gpt4 "gpt-4-1106-preview")
 (def ^:private gpt3 "gpt-3.5-turbo-1106")
 
 
-(defn context-part->function [tool]
-  (case tool
-    "current-file-path" context/current-file
-    "current-file-content" context/current-file-content
-    "current-ns" context/current-ns
-    "current-form" context/current-form
-    "current-top-level-form" context/current-top-level-form
-    "current-enclosing-form" context/current-enclosing-form
-    "selection" context/selection
-    (fn [] (str "function doesn't exist: " tool))))
+(def context-part->function
+  {"current-file-path" context/current-file
+   "current-file-content" context/current-file-content
+   "current-ns" context/current-ns
+   "current-form" context/current-form
+   "current-top-level-form" context/current-top-level-form
+   "current-enclosing-form" context/current-enclosing-form
+   "selection" context/selection})
 
 (def functions [{:type "function",
                  :function
@@ -63,6 +62,110 @@
     (.update global-state assistant-storage-key assistant-id)
     assistant))
 
+(defn call-info->tool-output [call-info]
+  (def call-info call-info)
+  (let [context-part (-> call-info :arguments :context-part)
+        context-fn (context-part->function context-part (str "Not a valid function: " context-part))
+        context (context-fn)
+        output (string/join "\n" [""
+                                  (str "Range: " (:range context))
+                                  "Content:"
+                                  "```clojure"
+                                  (:content context)
+                                  "```"])]
+    (def context-part context-part)
+    (def context-fn context-fn)
+    (def context context)
+    (def output output)
+    {:tool_call_id (:call-id call-info)
+     ;; TODO: Why do we need to stringify it twice?????
+     :output (pr-str (pr-str output))}))
+
+(defn function-call->call-info [tool-function-call]
+  (def function-call tool-function-call)
+  {:call-id (:id tool-function-call)
+   :function-name (-> tool-function-call :function :name)
+   :arguments (-> (-> tool-function-call :function :arguments)
+                  js/JSON.parse
+                  util/->clj)})
+
+(comment
+
+  (->> '({:function {:arguments "{\"context-part\":\"current-form\"}", :name "get-context"},
+          :id "call_vaRD4ybll9hRLzcttSSiSbnD",
+          :type "function"})
+       (map function-call->call-info)
+       (map call-info->tool-output))
+
+  (->> function_calls
+       (map function-call->call-info)
+       (map call-info->tool-output))
+  :rcf)
+
+(defn type-function? [call]
+  (def call call)
+  (= "function" (:type call)))
+
+(comment
+  (type-function? {:type "foo"})
+  (type-function? {:type "function" :hej "hå"})
+  (def function-calls [{:id "call_foo",
+                        :type "function",
+                        :function
+                        {:name "get-context",
+                         :arguments "{\"context-part\":\"current-form\"}"}}
+                       {:id "call_bar",
+                        :type "function",
+                        :function
+                        {:name "get-context", :arguments "{\"context-part\":\"selection\"}"}}])
+
+
+  (function-call->call-info {:id "call_foo",
+                             :type "function",
+                             :function
+                             {:name "get-context",
+                              :arguments "{\"context-part\":\"current-form\"}"}})
+
+  (map function-call->call-info function-calls)
+
+
+  (def call-infos [{:call-id "call_foo"
+                    :function-name "get-context"
+                    :arguments {:context-part "current-enclosing-form"}}
+                   {:call-id "call_bar"
+                    :function-name "get-context"
+                    :arguments {:context-part "current-form"}}])
+
+  (call-info->tool-output {:call-id "call_foo"
+                           :function-name "get-context"
+                           :arguments {:context-part "current-enclosing-form"}})
+
+  (map call-info->tool-output call-infos)
+
+  (def tool-outputs (map call-info->tool-output call-infos))
+
+  (defn x42 [n]
+    (* n 42))
+
+  (map x42 [1 2 3])
+  (js/Math.abs -1)
+
+  (map js/Math.abs [-2 -1 0 1 2])
+
+  (-> tool-outputs
+      first
+      clj->js
+      (js/JSON.stringify)
+      println)
+
+  ;; Save for later (hopefully not needed)
+  (let [retrieve-again (fn []
+                         (js/setTimeout
+                          #(retriever (inc tries))
+                          poll-interval))])
+
+  :rcf)
+
 (def ^:private done-statuses #{"completed" "failed" "expired" "cancelled"})
 (def ^:private  poll-interval 100)
 
@@ -73,12 +176,9 @@
   (-> (p/create
        (fn [resolve reject]
          (let [retriever (fn retriever [tries]
+                           (def tries tries)
                            (ui/say-one ".")
-                           (p/let [retrieve-again (fn []
-                                                    (js/setTimeout
-                                                     #(retriever (inc tries))
-                                                     poll-interval))
-                                   retrieved-js (openai-api/openai.beta.threads.runs.retrieve
+                           (p/let [retrieved-js (openai-api/openai.beta.threads.runs.retrieve
                                                  (.-id thread)
                                                  (.-id run))
                                    _ (def retrieved-js retrieved-js)
@@ -89,90 +189,56 @@
                                    status (:status retrieved)
                                    _ (def status status)]
                              (cond
-                               (done-statuses status)
-                               (do
-                                 (ui/say-ln! "")
-                                 (when-not (= "completed" status)
-                                   (ui/say-ln! "status:" status)
-                                   (println "status:" status)
-                                   (println retrieved)
-                                   (bd-fs/append-to-log (pr-str retrieved)))
-                                 (resolve messages))
-
-                               (= "requires_action" status)
-                               (do
-                                 (ui/say-ln! "")
-                                 (ui/say-ln! "status:" status)
-                                 (p/let [required-action (:required_action retrieved)
-                                         tool-calls (-> required-action :submit_tool_outputs :tool_calls)
-                                         function_calls (filter (fn [call]
-                                                                  (def call call)
-                                                                  (= "function" (:type call)))
-                                                                tool-calls)
-                                         call-data (map (fn [call]
-                                                          {:call-id (:id call)
-                                                           :function-name (-> call :function :name)
-                                                           :arguments (-> (-> call :function :arguments)
-                                                                          js/JSON.parse
-                                                                          util/->clj)})
-                                                        function_calls)
-                                         tool-outputs (map (fn [call-datum]
-                                                             (let [f (context-part->function (-> call-datum :arguments :context-part))]
-                                                               {:tool_call_id (:call-id call-datum)
-                                                                :output (pr-str (f))}))
-                                                           call-data)]
-                                   (def required-action required-action)
-                                   (def tool-calls tool-calls)
-                                   (def function_calls function_calls)
-                                   (def call-data call-data)
-                                   (def tool-outputs tool-outputs)
-                                   (openai-api/openai.beta.threads.runs.submitToolOutputs
-                                    (.-id thread)
-                                    (.-id run)
-                                    (clj->js tool-outputs))
-                                   (retrieve-again)))
-
                                (:interrupted? @db/!db)
                                (p/do
                                  (swap! db/!db assoc :interrupted? false)
                                  (openai-api/openai.beta.threads.runs.cancel (.-id thread) (.-id run))
                                  (reject :interrupted))
 
+                               (= "completed" status)
+                               (do
+                                 (ui/say-ln! "")
+                                 (resolve messages))
+
+                               (done-statuses status)
+                               (do
+                                 (ui/say-ln! "")
+                                 (ui/say-ln! "status:" status)
+                                 (println "status:" status)
+                                 (println retrieved)
+                                 (bd-fs/append-to-log (pr-str retrieved))
+                                 (reject status))
+
+                               (= "requires_action" status)
+                               (do
+                                 (ui/say-ln! "")
+                                 (ui/say-ln! "status:" status)
+                                 (let [required-action (:required_action retrieved)
+                                       tool-calls (-> required-action :submit_tool_outputs :tool_calls)
+                                       function_calls (filter type-function? tool-calls)
+                                       call-infos (map function-call->call-info function_calls)
+                                       tool-outputs (map call-info->tool-output call-infos)]
+                                   (def required-action required-action)
+                                   (def tool-calls tool-calls)
+                                   (def function_calls function_calls)
+                                   (def call-infos call-infos)
+                                   (def tool-outputs tool-outputs)
+                                   (p/do
+                                     (-> (openai-api/openai.beta.threads.runs.submitToolOutputs
+                                          (.-id thread)
+                                          (.-id run)
+                                          (-> {:tool_outputs tool-outputs}
+                                              clj->js))
+                                         (p/catch (fn [error]
+                                                    (def error error)
+                                                    (js/console.error error))))
+                                     (retriever (inc tries)))))
+
                                :else
-                               (retrieve-again))))]
+                               (retriever (inc tries)))))]
            (retriever 0))))
       (p/finally (fn []
                    (swap! db/!db assoc :thread-running? false)))))
-
-(comment
-  (def call-data-correct
-    [{:call-id "call_aZ1DGlNjCK22ji8O7dEYl892"
-      :function-name "get-context"
-      :arguments {:context-part "current-enclosing-form"}}])
-  (-> "{\"context-part\":\"current-enclosing-form\"}"
-      js/JSON.parse
-      util/->clj)
-
-
-  (def call-data
-    (map (fn [call]
-           {:call-id (:id call)
-            :function-name (-> call :function :name)
-            :arguments (-> (-> call :function :arguments)
-                           js/JSON.parse
-                           util/->clj)})
-         function_calls))
-
-  (def tool-outputs (map (fn [call-datum]
-                           (let [f (context-part->function (-> call-datum :arguments :context-part))]
-                             {:tool_call_id (:call-id call-datum)
-                              :output (pr-str (f))}))
-                         call-data))
-
-  (defn alltid [] (fn [] (str "function doesn't exist: " "foo")))
-  (constantly "nånting")
-
-  :rcf)
 
 (defn- call-assistance!+ [assistant thread input]
   (p/let
