@@ -93,66 +93,6 @@
 (defn type-function? [call]
   (= "function" (:type call)))
 
-(comment
-  (type-function? {:type "foo"})
-  (type-function? {:type "function" :hej "hå"})
-  (def function-calls [{:id "call_foo",
-                        :type "function",
-                        :function
-                        {:name "get-context",
-                         :arguments "{\"context-part\":\"current-form\"}"}}
-                       {:id "call_bar",
-                        :type "function",
-                        :function
-                        {:name "get-context", :arguments "{\"context-part\":\"selection\"}"}}])
-
-
-  (function-call->call-info {:id "call_foo",
-                             :type "function",
-                             :function
-                             {:name "get-context",
-                              :arguments "{\"context-part\":\"current-form\"}"}})
-
-  (map function-call->call-info function-calls)
-
-
-  (def call-infos [{:call-id "call_foo"
-                    :function-name "get-context"
-                    :arguments {:context-part "current-enclosing-form"}}
-                   {:call-id "call_bar"
-                    :function-name "get-context"
-                    :arguments {:context-part "current-form"}}])
-
-  (call-info->tool-output {:call-id "call_foo"
-                           :function-name "get-context"
-                           :arguments {:context-part "current-enclosing-form"}})
-
-  (map call-info->tool-output call-infos)
-
-  (def tool-outputs (map call-info->tool-output call-infos))
-
-  (defn x42 [n]
-    (* n 42))
-
-  (map x42 [1 2 3])
-  (js/Math.abs -1)
-
-  (map js/Math.abs [-2 -1 0 1 2])
-
-  (-> tool-outputs
-      first
-      clj->js
-      (js/JSON.stringify)
-      println)
-
-  ;; Save for later (hopefully not needed)
-  (let [retrieve-again (fn []
-                         (js/setTimeout
-                          #(retriever (inc tries))
-                          poll-interval))])
-
-  :rcf)
-
 (def ^:private done-statuses #{"completed" "failed" "expired" "cancelled"})
 (def ^:private  poll-interval 100)
 
@@ -163,7 +103,6 @@
   (-> (p/create
        (fn [resolve reject]
          (let [retriever (fn retriever [tries]
-                           (def tries tries)
                            (ui/say-one ".")
                            (p/let [retrieve-again (fn []
                                                     (js/setTimeout
