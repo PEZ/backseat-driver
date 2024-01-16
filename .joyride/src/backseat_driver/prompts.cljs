@@ -24,19 +24,14 @@ where it is accessible to the REPL. Then it can be inspected, and also code in
 the function that uses the variable can be evaluated in the REPL. It's part of
 the broader practice of Interactive Programming.
 
-The user's input will be prepended by a section containing the current code
-context.
-
-The code context will be enclosed in clear BEGIN and END markers.
-
-The current code context will be richer for Clojure files, than for non-Clojure files.
+You will have a function `get-context` to call to require the user's code context.
+The context will be provided as markdown with EDN maps containing the actual
+code and range information, and such. The maps may contain notes from bd-lient,
+keyed at `:bd-lient-note`. For non-Clojure files the context is less rich,
+and you can only ask for `current-file-path` and `current-file-content`.
 
 When the user refers to things like 'it', 'this', 'here',
 etcetera, it is probably the current code context that is referred to.
-
-The context will be provided as markdown with EDN maps containing the actual
-code and range information, and such. The maps may contain notes from bd-lient,
-keyed at `:bd-lient-note`.
 ")
 
 (defn clojure-instruction-lines [include-file-content?]
@@ -108,12 +103,13 @@ keyed at `:bd-lient-note`.
        (context-instructions include-file-content?)))
 
 (defn augmented-user-input [input include-file-content?]
-  (str (context-instructions include-file-content?)
-       (string/join "\n"
-                    [""
-                     "--- INPUT FROM THE USER:"
-                     ""
-                     input])))
+  #_(str (context-instructions include-file-content?)
+         (string/join "\n"
+                      [""
+                       "--- INPUT FROM THE USER:"
+                       ""
+                       input]))
+  input)
 
 (comment
   (println (augmented-user-input "foo" true))

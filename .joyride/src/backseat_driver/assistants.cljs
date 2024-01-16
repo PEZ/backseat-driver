@@ -14,10 +14,27 @@
 (def ^:private gpt4 "gpt-4-1106-preview")
 (def ^:private gpt3 "gpt-3.5-turbo-1106")
 
+(def functions [{:type "function",
+                 :function
+                 {:name "get-context",
+                  :description "Get the user's current code context, such as file path, current file content, current namespace, current form, current top level form, current enclosing form, and current selection.",
+                  :parameters
+                  {:type "object",
+                   :properties
+                   {:context-part {:type "string", :enum ["current-file-path"
+                                                          "current-file-content"
+                                                          "current-ns"
+                                                          "current-form"
+                                                          "current-top-level-form"
+                                                          "current-enclosing-form"
+                                                          "selection"]}},
+                   :required ["context-part"]}}}])
+
 (def assistant-conf {:name "Backseat Driver"
                      :instructions prompts/system-instructions
-                     :tools [{:type "code_interpreter"}
-                             #_{:type "retrieval"}]
+                     :tools (into [#_{:type "code_interpreter"}
+                                   #_{:type "retrieval"}]
+                                  functions)
                      :model gpt4})
 
 (defn get-or-create-assistant!+ []
@@ -38,18 +55,29 @@
 (def ^:private  poll-interval 100)
 
 (defn- retrieve-poller+ [thread run]
+  (def thread thread)
+  (def run run)
   (swap! db/!db assoc :thread-running? true)
   (-> (p/create
        (fn [resolve reject]
          (let [retriever (fn retriever [tries]
                            (ui/say-one ".")
-                           (p/let [retrieved-js (openai-api/openai.beta.threads.runs.retrieve
+                           (p/let [retrieve-again (fn []
+                                                    (js/setTimeout
+                                                     #(retriever (inc tries))
+                                                     poll-interval))
+                                   retrieved-js (openai-api/openai.beta.threads.runs.retrieve
                                                  (.-id thread)
                                                  (.-id run))
+                                   _ (def retrieved-js retrieved-js)
                                    retrieved (util/->clj retrieved-js)
+                                   _ (def retrieved retrieved)
                                    messages (openai-api/openai.beta.threads.messages.list (.-id thread))
-                                   status (:status retrieved)]
-                             (if (done-statuses status)
+                                   _ (def messages messages)
+                                   status (:status retrieved)
+                                   _ (def status status)]
+                             (cond
+                               (done-statuses status)
                                (do
                                  (ui/say-ln! "")
                                  (when-not (= "completed" status)
@@ -58,21 +86,46 @@
                                    (println retrieved)
                                    (bd-fs/append-to-log (pr-str retrieved)))
                                  (resolve messages))
-                               (if (:interrupted? @db/!db)
-                                 (p/do
-                                   (swap! db/!db assoc :interrupted? false)
-                                   (openai-api/openai.beta.threads.runs.cancel (.-id thread) (.-id run))
-                                   (reject :interrupted))
-                                 (js/setTimeout
-                                  #(retriever (inc tries))
-                                  poll-interval)))))]
+
+                               (= "requires_action" status)
+                               (do
+                                 (ui/say-ln! "")
+                                 (ui/say-ln! "status:" status)
+                                 (p/let [required-action (:required_action retrieved)
+                                         tool-calls (-> required-action :submit_tool_outputs :tool_calls)
+                                         function_calls (filter (fn [call]
+                                                                  (def call call)
+                                                                  (= "function" (:type call)))
+                                                                tool-calls)
+                                         call-ids (map :id function_calls)
+                                         tool-outputs {:tool_outputs (map (fn [id]
+                                                                            {:tool_call_id id
+                                                                             :output "Some code"})
+                                                                          call-ids)}
+                                         ]
+                                   (def required-action required-action)
+                                   (def tool-outputs tool-outputs)
+                                   (openai-api/openai.beta.threads.runs.submitToolOutputs
+                                    (.-id thread)
+                                    (.-id run)
+                                    (clj->js tool-outputs))
+                                   (retrieve-again)))
+
+                               (:interrupted? @db/!db)
+                               (p/do
+                                 (swap! db/!db assoc :interrupted? false)
+                                 (openai-api/openai.beta.threads.runs.cancel (.-id thread) (.-id run))
+                                 (reject :interrupted))
+
+                               :else
+                               (retrieve-again))))]
            (retriever 0))))
       (p/finally (fn []
                    (swap! db/!db assoc :thread-running? false)))))
 
 (defn- call-assistance!+ [assistant thread input]
   (p/let
-   [include-file-content? (threads/maybe-add-shared-file!? thread (:path (context/current-file)))
+   [include-file-content? (threads/maybe-add-shared-file!?+ thread (:path (context/current-file)))
     augmented-input (prompts/augmented-user-input input include-file-content?)
     _message (openai-api/openai.beta.threads.messages.create (.-id thread)
                                                              (clj->js {:role "user"
@@ -80,7 +133,10 @@
     run (openai-api/openai.beta.threads.runs.create
          (.-id thread)
          (clj->js {:assistant_id (.-id assistant)
-                   :model gpt3}))]
+                   :model gpt4
+                   :tools (into [#_{:type "code_interpreter"}
+                                 #_{:type "retrieval"}]
+                                functions)}))]
     (retrieve-poller+ thread run)))
 
 (defn- new-assistant-messages [clj-messages last-created-at]
@@ -104,7 +160,7 @@
                           :ignoreFocusOut true})]
         (when-not (= js/undefined input)
           (p/let [_ (ui/user-says! input)
-                  _ (threads/maybe-add-title!? thread input)
+                  _ (threads/maybe-add-title!?+ thread input)
                   api-messages (call-assistance!+ assistant thread input)
                   _ (def api-messages api-messages)
                   clj-messages (util/->clj (-> api-messages .-body .-data))
