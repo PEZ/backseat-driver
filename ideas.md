@@ -8,6 +8,28 @@
 * Give it access to Joyride?
 * Support creating new threads
 * Save logs of all conversations somewhere
+* Add user config file, with e.g.
+  * User info
+  * User instructions
+  * Annotated links from the user
+
+* Quick note-taking
+  * Add notes to user context?
+
+## Joyride
+
+Joyride could support this script better with:
+
+* API for getting global Joyride config path
+* API for getting workspace Joyride path
+* Bug with not newline added for `println`
+
+## Calva
+
+Calva could support this script better with:
+
+* REPL utilities API, source, doc, signatures, more?
+
 
 ## Backseat Driver suggests:
 
