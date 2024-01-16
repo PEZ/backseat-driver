@@ -82,6 +82,16 @@
                   js/JSON.parse
                   util/->clj)})
 
+(defn type-function? [call]
+  (= "function" (:type call)))
+
+(defn call-tool-functions [run]
+  (def run run)
+  (->> (get-in run [:required_action :submit_tool_outputs :tool_calls])
+       (filter type-function?)
+       (map function-call->call-info)
+       (map call-info->tool-output)))
+
 (comment
   (->> '({:function {:arguments "{\"context-part\":\"current-form\"}", :name "get-context"},
           :id "call_vaRD4ybll9hRLzcttSSiSbnD",
@@ -89,9 +99,6 @@
        (map function-call->call-info)
        (map call-info->tool-output))
   :rcf)
-
-(defn type-function? [call]
-  (= "function" (:type call)))
 
 (def ^:private done-statuses #{"completed" "failed" "expired" "cancelled"})
 (def ^:private continue-statuses #{"queued" "in_progress" "cancelling"})
@@ -136,7 +143,7 @@
                                (do
                                  (report-status! :interrupted)
                                  (swap! db/!db assoc :interrupted? false)
-                                 (reject :poll-interrupted))
+                                 (reject [thread-id run-id status] :poll-interrupted))
 
                                (= "completed" status)
                                (do
@@ -148,26 +155,21 @@
                                (do
                                  (println run)
                                  (bd-fs/append-to-log (pr-str run))
-                                 (reject status))
+                                 (reject [thread-id run-id status] :not-completed))
 
                                (= "requires_action" status)
                                (do
                                  (report-status! status)
-                                 (let [required-action (:required_action run)
-                                       tool-calls (-> required-action :submit_tool_outputs :tool_calls)
-                                       function_calls (filter type-function? tool-calls)
-                                       call-infos (map function-call->call-info function_calls)
-                                       tool-outputs (map call-info->tool-output call-infos)]
-                                   (-> (openai-api/openai.beta.threads.runs.submitToolOutputs
-                                        thread-id
-                                        run-id
-                                        (-> {:tool_outputs tool-outputs}
-                                            clj->js))
-                                       (p/then (fn [_]
-                                                 (retrieve-again)))
-                                       (p/catch (fn [error]
-                                                  (ui/say-error "Submitting function outputs failed:" error)
-                                                  (reject (str "Submitting function outputs failed:" error)))))))
+                                 (-> (openai-api/openai.beta.threads.runs.submitToolOutputs
+                                      thread-id
+                                      run-id
+                                      (clj->js {:tool_outputs (call-tool-functions run)}))
+                                     (p/then (fn [_]
+                                               (retrieve-again)))
+                                     (p/catch (fn [error]
+                                                (ui/say-error "Submitting function outputs failed:" error)
+                                                (reject [thread-id run-id status]
+                                                        (str "Submitting function outputs failed:" error))))))
 
                                (continue-statuses status)
                                (do
@@ -175,7 +177,7 @@
                                  (retrieve-again))
 
                                :else
-                               (reject status))))]
+                               (reject [thread-id run-id status] :unknown-status))))]
            (report-status! :poll-started)
            (retriever 0))))
       (p/finally (fn []
@@ -197,12 +199,12 @@
                                     functions)
                        :instructions (str "The users current file is: `" (context/current-file) "`")}))]
         (retrieve-poller+ (.-id thread) (.-id run)))
-      (p/catch (fn [status]
+      (p/catch (fn [[thread-id run-id status :as poll-info] & error]
                  (report-status! status)
                  (ui/say-ln! "status:" status)
                  (println "status:" status "\n")
-                 (openai-api/openai.beta.threads.runs.cancel (.-id thread) (.-id run))
-                 (p/rejected status)))))
+                 (openai-api/openai.beta.threads.runs.cancel thread-id run-id)
+                 (p/rejected (pr-str [poll-info error]))))))
 
 (defn- new-assistant-messages [clj-messages last-created-at]
   (cond->> clj-messages
