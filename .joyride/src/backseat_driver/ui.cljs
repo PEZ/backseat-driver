@@ -28,7 +28,7 @@
   (show-channel!)
   (apply say-ln! (into [(str "ERROR: " message)] messages)))
 
-(defn say-one [message]
+(defn say-one! [message]
   (maybe-show-channel!)
   (-> (:channel @db/!db) (.append message)))
 

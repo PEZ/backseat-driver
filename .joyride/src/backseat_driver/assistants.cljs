@@ -94,90 +94,115 @@
   (= "function" (:type call)))
 
 (def ^:private done-statuses #{"completed" "failed" "expired" "cancelled"})
+(def ^:private continue-statuses #{"queued" "in_progress" "cancelling"})
 (def ^:private  poll-interval 100)
 
-(defn- retrieve-poller+ [thread run]
-  (def thread thread)
-  (def run run)
+(def ^:private status->indicator
+  {nil                 "N]\n"
+   :poll-started       "["
+   :retrieve-timeout   "T]\n"
+   :poll-interrupted   "I]\n"
+   "queued"            "Q"
+   "in_progress"       "."
+   "requires_action"   "R"
+   "cancelling"        "c"
+   "cancelled"         "C]\n"
+   "failed"            "F]\n"
+   "completed"         "]\n"
+   "expired"           "E]\n"})
+
+(defn- report-status! [status]
+  (ui/say-one! (status->indicator status "U]\n")))
+
+(defn- retrieve-poller+ [thread-id run-id]
+  (def thread-id thread-id)
+  (def run-id run-id)
   (swap! db/!db assoc :thread-running? true)
   (-> (p/create
        (fn [resolve reject]
          (let [retriever (fn retriever [tries]
-                           (ui/say-one ".")
                            (p/let [retrieve-again (fn []
                                                     (js/setTimeout
                                                      #(retriever (inc tries))
                                                      poll-interval))
                                    retrieved-js (openai-api/openai.beta.threads.runs.retrieve
-                                                 (.-id thread)
-                                                 (.-id run))
+                                                 thread-id
+                                                 run-id)
                                    _ (def retrieved-js retrieved-js)
-                                   retrieved (util/->clj retrieved-js)
-                                   messages (openai-api/openai.beta.threads.messages.list (.-id thread))
-                                   status (:status retrieved)]
+                                   run (util/->clj retrieved-js)
+                                   status (:status run)]
                              (cond
                                (:interrupted? @db/!db)
-                               (p/do
+                               (do
+                                 (report-status! :interrupted)
                                  (swap! db/!db assoc :interrupted? false)
-                                 (openai-api/openai.beta.threads.runs.cancel (.-id thread) (.-id run))
-                                 (reject :interrupted))
+                                 (reject :poll-interrupted))
 
                                (= "completed" status)
                                (do
-                                 (ui/say-ln! "")
-                                 (resolve messages))
+                                 (report-status! status)
+                                 (p/let [messages (openai-api/openai.beta.threads.messages.list thread-id)]
+                                   (resolve messages)))
 
                                (done-statuses status)
                                (do
-                                 (ui/say-ln! "")
-                                 (ui/say-ln! "status:" status)
-                                 (println "status:" status)
-                                 (println retrieved)
-                                 (bd-fs/append-to-log (pr-str retrieved))
+                                 (println run)
+                                 (bd-fs/append-to-log (pr-str run))
                                  (reject status))
 
                                (= "requires_action" status)
                                (do
-                                 (ui/say-ln! "")
-                                 (ui/say-ln! "status:" status)
-                                 (let [required-action (:required_action retrieved)
+                                 (report-status! status)
+                                 (let [required-action (:required_action run)
                                        tool-calls (-> required-action :submit_tool_outputs :tool_calls)
                                        function_calls (filter type-function? tool-calls)
                                        call-infos (map function-call->call-info function_calls)
                                        tool-outputs (map call-info->tool-output call-infos)]
                                    (-> (openai-api/openai.beta.threads.runs.submitToolOutputs
-                                        (.-id thread)
-                                        (.-id run)
+                                        thread-id
+                                        run-id
                                         (-> {:tool_outputs tool-outputs}
                                             clj->js))
                                        (p/then (fn [_]
                                                  (retrieve-again)))
                                        (p/catch (fn [error]
-                                                  (ui/say-error "Submit function output failed:" error)
-                                                  (reject (str "Submit function output failed:" error)))))))
+                                                  (ui/say-error "Submitting function outputs failed:" error)
+                                                  (reject (str "Submitting function outputs failed:" error)))))))
+
+                               (continue-statuses status)
+                               (do
+                                 (report-status! status)
+                                 (retrieve-again))
 
                                :else
-                               (retrieve-again))))]
+                               (reject status))))]
+           (report-status! :poll-started)
            (retriever 0))))
       (p/finally (fn []
                    (swap! db/!db assoc :thread-running? false)))))
 
 (defn- call-assistance!+ [assistant thread input]
-  (p/let
-   [include-file-content? (threads/maybe-add-shared-file!?+ thread (:path (context/current-file)))
-    augmented-input (prompts/augmented-user-input input include-file-content?)
-    _message (openai-api/openai.beta.threads.messages.create (.-id thread)
-                                                             (clj->js {:role "user"
-                                                                       :content augmented-input}))
-    run (openai-api/openai.beta.threads.runs.create
-         (.-id thread)
-         (clj->js {:assistant_id (.-id assistant)
-                   :model gpt4
-                   :tools (into [#_{:type "code_interpreter"}
-                                 #_{:type "retrieval"}]
-                                functions)
-                   :instructions (str "The users current file is: `" (context/current-file) "`")}))]
-    (retrieve-poller+ thread run)))
+  (-> (p/let
+       [include-file-content? (threads/maybe-add-shared-file!?+ thread (:path (context/current-file)))
+        augmented-input (prompts/augmented-user-input input include-file-content?)
+        _message (openai-api/openai.beta.threads.messages.create (.-id thread)
+                                                                 (clj->js {:role "user"
+                                                                           :content augmented-input}))
+        run (openai-api/openai.beta.threads.runs.create
+             (.-id thread)
+             (clj->js {:assistant_id (.-id assistant)
+                       :model gpt4
+                       :tools (into [#_{:type "code_interpreter"}
+                                     #_{:type "retrieval"}]
+                                    functions)
+                       :instructions (str "The users current file is: `" (context/current-file) "`")}))]
+        (retrieve-poller+ (.-id thread) (.-id run)))
+      (p/catch (fn [status]
+                 (report-status! status)
+                 (ui/say-ln! "status:" status)
+                 (println "status:" status "\n")
+                 (openai-api/openai.beta.threads.runs.cancel (.-id thread) (.-id run))
+                 (p/rejected status)))))
 
 (defn- new-assistant-messages [clj-messages last-created-at]
   (cond->> clj-messages
