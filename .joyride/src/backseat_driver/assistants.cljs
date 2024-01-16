@@ -100,7 +100,7 @@
                                          call-ids (map :id function_calls)
                                          tool-outputs {:tool_outputs (map (fn [id]
                                                                             {:tool_call_id id
-                                                                             :output "Some code"})
+                                                                             :output (pr-str (context/current-file-content))})
                                                                           call-ids)}
                                          ]
                                    (def required-action required-action)
