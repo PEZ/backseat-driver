@@ -24,6 +24,10 @@
       (-> channel (.append message)))
     (-> channel (.appendLine ""))))
 
+(defn say-error [message & messages]
+  (show-channel!)
+  (apply say-ln! (into [(str "ERROR: " message)] messages)))
+
 (defn say-one [message]
   (maybe-show-channel!)
   (-> (:channel @db/!db) (.append message)))
