@@ -1,5 +1,6 @@
 (ns backseat-driver.threads
-  (:require [joyride.core :as joyride]
+  (:require [backseat-driver.openai-api :as openai-api]
+            [joyride.core :as joyride]
             [backseat-driver.util :as util]
             [promesa.core :as p]))
 
@@ -43,6 +44,12 @@
     (when-not shared-file
       (save-thread!+ thread nil file-path)
       true)))
+
+(defn fetch-messages!+ [thread-id]
+  (def thread-id thread-id)
+  (p/let [messages (openai-api/openai.beta.threads.messages.list thread-id)]
+    (def messages messages)
+    (util/->clj (-> messages .-body .-data))))
 
 (comment
   (-> (joyride/extension-context) .-workspaceState (.update "backseat-driver-threads" js/undefined))

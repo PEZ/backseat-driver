@@ -146,8 +146,7 @@
                                (= "completed" status)
                                (do
                                  (report-status! status)
-                                 (p/let [messages (openai-api/openai.beta.threads.messages.list thread-id)]
-                                   (resolve messages)))
+                                 (resolve (threads/fetch-messages!+ thread-id)))
 
                                (done-statuses status)
                                (do
@@ -226,12 +225,10 @@
         (when-not (= js/undefined input)
           (p/let [_ (ui/user-says! input)
                   _ (threads/maybe-add-title!?+ thread input)
-                  api-messages (call-assistance!+ assistant thread input)
-                  _ (def api-messages api-messages)
-                  clj-messages (util/->clj (-> api-messages .-body .-data))
+                  messages (call-assistance!+ assistant thread input)
                   last-created-at (some-> @db/!db :last-message :created_at)
-                  new-messages (new-assistant-messages clj-messages last-created-at)
-                  _ (swap! db/!db assoc :last-message (first clj-messages))
+                  new-messages (new-assistant-messages messages last-created-at)
+                  _ (swap! db/!db assoc :last-message (first messages))
                   message-texts (map message-text new-messages)]
             (ui/assistant-says! message-texts)
             :advice-given+)))
