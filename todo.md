@@ -3,7 +3,8 @@
 * [ ] Confusing naming of stored-threads, which are not stored threads, but rather stored thread meta data
 * [ ] Render thread (session)
 * [ ] Restore last chat session on start
+* [ ] Explore how to control the costs
 
 ## Function calling
-* [ ] current-file-path, because assumptions...
+* [x] current-file-path, because assumptions...
 * [ ] We need much better prompting, guiding the AI how to use the functions
