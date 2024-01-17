@@ -95,12 +95,13 @@
 
 (def ^:private done-statuses #{"completed" "failed" "expired" "cancelled"})
 (def ^:private continue-statuses #{"queued" "in_progress" "cancelling"})
-(def ^:private  poll-interval 100)
+(def ^:private poll-interval 100)
+(def ^:private poll-timeout 10000) ; 10 s, is that too low?
 
 (def ^:private status->indicator
   {nil                 "N]\n"
    :poll-started       "["
-   :retrieve-timeout   "T]\n"
+   :poll-timeout       "T]\n"
    :poll-interrupted   "I]\n"
    "queued"            "Q"
    "in_progress"       "."
@@ -125,9 +126,13 @@
                                                     (js/setTimeout
                                                      #(retriever (inc tries))
                                                      poll-interval))
-                                   run-js (openai-api/openai.beta.threads.runs.retrieve
-                                           thread-id
-                                           run-id)
+                                   run-js (-> (util/with-timeout+
+                                                (openai-api/openai.beta.threads.runs.retrieve
+                                                 thread-id
+                                                 run-id)
+                                                poll-timeout)
+                                              (.catch (fn [e]
+                                                        (reject [thread-id run-id :poll-timeout (ex-cause e)]))))
                                    _ (def retrieved-js run-js)
                                    run (util/->clj run-js)
                                    status (:status run)]
@@ -136,7 +141,7 @@
                                (do
                                  (report-status! :poll-interrupted)
                                  (swap! db/!db assoc :interrupted? false)
-                                 (reject [thread-id run-id status] :poll-interrupted))
+                                 (reject [thread-id run-id status :poll-interrupted]))
 
                                (= "completed" status)
                                (do
@@ -148,7 +153,7 @@
                                (do
                                  (println (pr-str run))
                                  (bd-fs/append-to-log (pr-str run))
-                                 (reject [thread-id run-id status] :not-completed))
+                                 (reject [thread-id run-id status :not-completed]))
 
                                (= "requires_action" status)
                                (do
@@ -170,7 +175,7 @@
                                  (retrieve-again))
 
                                :else
-                               (reject [thread-id run-id status] :unknown-status))))]
+                               (reject [thread-id run-id status :unknown-status]))))]
            (report-status! :poll-started)
            (retriever 0))))
       (p/finally (fn []
@@ -192,12 +197,12 @@
                                     functions)
                        :instructions (str "The users current file is: `" (context/current-file) "`")}))]
         (retrieve-poller+ (.-id thread) (.-id run)))
-      (p/catch (fn [[thread-id run-id status :as poll-info] & error]
+      (p/catch (fn [[thread-id run-id status :as poll-info]]
                  (report-status! status)
-                 (ui/say-ln! "status:" status)
+                 (ui/say-ln! "status:" (str status))
                  (println "status:" status "\n")
                  (openai-api/openai.beta.threads.runs.cancel thread-id run-id)
-                 (p/rejected (pr-str [poll-info error]))))))
+                 (p/rejected (pr-str [poll-info]))))))
 
 (defn- new-assistant-messages [clj-messages last-created-at]
   (cond->> clj-messages
