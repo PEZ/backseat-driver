@@ -32,7 +32,7 @@
 
 (defn retrieve-saved-threads-sorted []
   (-> (retrieve-saved-threads)
-      (util/->vec-sort-vals-by :created-at)))
+      (util/->vec-sort-vals-by :updated-at)))
 
 (defn stored-thread [thread]
   (get (retrieve-saved-threads) (keyword (.-id thread))))
@@ -82,6 +82,7 @@
           messages (fetch-messages!+ thread-id)]
     (ui/clear!)
     (ui/render! (messages->string messages))
+    (save-thread!+ thread nil nil)
     (swap! db/!db assoc :last-message (first messages))
     (swap! db/!db assoc :thread+ thread)))
 
@@ -91,6 +92,14 @@
   (render-thread!+ "thread_qhEKFeZHlRcoml9lTnOQMdC4")
   (render-thread!+ "thread_jp4AD8U9i9DY4vCnpuuyTYWT")
   (render-thread!+ "thread_YacWc4FHhlzWNCUtBE0fTMvn")
+  (render-thread!+ "thread_w1DfxHRxojyo8mRyPWOVDPqL")
+  (render-thread!+ "thread_X1hgfMiyfqLOR4nHUaaYZcTr") ; 1705436712209
+  (js/Date. 1705436712209) ; 1705436712209
+  (render-thread!+ "thread_UVWAIhwK7uRg0EBsL6N4EwUi") ; 1705419622782
+  (js/Date. 1705419622782)
+  (js/Date. 1705510137122)
+
+
   (def messages (util/->clj (-> api-messages .-body .-data)))
   (map message-text messages)
   (message-info (first messages))
