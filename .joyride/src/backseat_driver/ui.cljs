@@ -1,9 +1,16 @@
 (ns backseat-driver.ui
   (:require ["vscode" :as vscode]
             [backseat-driver.db :as db]
-            [promesa.core :as p]))
+            [promesa.core :as p]
+            [clojure.string :as string]))
 
 (def assistant-name "Backseat Driver")
+
+(defn clear! []
+  (.clear (:channel @db/!db)))
+
+(defn render! [s]
+  (.appendLine (:channel @db/!db) s))
 
 (defn show-channel! []
   (let [channel (:channel @db/!db)]
@@ -31,6 +38,15 @@
 (defn say-one! [message]
   (maybe-show-channel!)
   (-> (:channel @db/!db) (.append message)))
+
+(defn assistant-says [text]
+  (string/join "\n" [""
+                     (str assistant-name ":")
+                     text]))
+
+(defn user-says [text]
+  (string/join "\n" [""
+                     (str "Me: " text)]))
 
 (defn assistant-says! [message-texts]
   (maybe-show-channel!)

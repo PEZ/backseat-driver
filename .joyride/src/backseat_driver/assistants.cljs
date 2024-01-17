@@ -210,10 +210,6 @@
     (not last-created-at) (filter #(= (:role %) "assistant"))
     :always (sort-by :created_at)))
 
-(defn- message-text [m]
-  (-> m :content first :text :value))
-
-
 (defn advice!+ []
   (swap! db/!db assoc :interrupted? false)
   (-> (p/let [assistant (:assistant+ @db/!db)
@@ -229,14 +225,13 @@
                   last-created-at (some-> @db/!db :last-message :created_at)
                   new-messages (new-assistant-messages messages last-created-at)
                   _ (swap! db/!db assoc :last-message (first messages))
-                  message-texts (map message-text new-messages)]
+                  message-texts (map threads/message-text new-messages)]
             (ui/assistant-says! message-texts)
             :advice-given+)))
       (p/catch (fn [e] (println "ERROR: " e "\n")))))
 
 (comment
   (backseat-driver.app/init!)
-  (util/->clj (-> api-messages .-body .-data))
   (swap! db/!db assoc :interrupted? true)
   (swap! db/!db assoc :interrupted? false)
   @db/!db
