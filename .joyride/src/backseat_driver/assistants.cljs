@@ -125,16 +125,16 @@
                                                     (js/setTimeout
                                                      #(retriever (inc tries))
                                                      poll-interval))
-                                   retrieved-js (openai-api/openai.beta.threads.runs.retrieve
-                                                 thread-id
-                                                 run-id)
-                                   _ (def retrieved-js retrieved-js)
-                                   run (util/->clj retrieved-js)
+                                   run-js (openai-api/openai.beta.threads.runs.retrieve
+                                           thread-id
+                                           run-id)
+                                   _ (def retrieved-js run-js)
+                                   run (util/->clj run-js)
                                    status (:status run)]
                              (cond
                                (:interrupted? @db/!db)
                                (do
-                                 (report-status! :interrupted)
+                                 (report-status! :poll-interrupted)
                                  (swap! db/!db assoc :interrupted? false)
                                  (reject [thread-id run-id status] :poll-interrupted))
 
