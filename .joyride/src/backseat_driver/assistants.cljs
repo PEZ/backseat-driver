@@ -64,16 +64,9 @@
 
 (defn call-info->tool-output [call-info]
   (let [context-part (-> call-info :arguments :context-part)
-        context-fn (context-part->function context-part (str "Not a valid function: " context-part))
-        context (context-fn)
-        output (string/join "\n" [""
-                                  (str "Range: " (:range context))
-                                  "Content:"
-                                  "```clojure"
-                                  (:content context)
-                                  "```"])]
+        context-fn (context-part->function context-part (str "Not a valid function: " context-part))]
     {:tool_call_id (:call-id call-info)
-     :output (pr-str output)}))
+     :output (pr-str (context-fn))}))
 
 (defn function-call->call-info [tool-function-call]
   {:call-id (:id tool-function-call)
