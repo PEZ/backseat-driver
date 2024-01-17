@@ -44,8 +44,12 @@
   (swap! db/!db assoc :assistant+ (assistants/get-or-create-assistant!+))
   (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")]
     (push-disposable channel)
-    (swap! db/!db assoc :channel channel))
-  (new-thread!+)
+    (swap! db/!db assoc :channel channel)
+    (.show channel true))
+  (if-let [latest-thread (some-> (threads/retrieve-saved-threads-sorted)
+                                 last)]
+    (threads/render-thread!+ (:thread-id latest-thread))
+    (new-thread!+))
   (push-disposable (ui/add-assist-button!)))
 
 (defn please-advice! []

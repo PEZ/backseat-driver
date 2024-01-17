@@ -90,6 +90,7 @@
   (:thread+ @db/!db)
   (render-thread!+ "thread_qhEKFeZHlRcoml9lTnOQMdC4")
   (render-thread!+ "thread_jp4AD8U9i9DY4vCnpuuyTYWT")
+  (render-thread!+ "thread_YacWc4FHhlzWNCUtBE0fTMvn")
   (def messages (util/->clj (-> api-messages .-body .-data)))
   (map message-text messages)
   (message-info (first messages))
