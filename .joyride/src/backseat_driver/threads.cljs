@@ -4,7 +4,8 @@
             [backseat-driver.util :as util]
             [promesa.core :as p]
             [backseat-driver.ui :as ui]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [backseat-driver.db :as db]))
 
 (def ^:private threads-storage-key "backseat-driver-threads")
 (def ^:private max-title-length 120)
@@ -77,12 +78,18 @@
        (string/triml)))
 
 (defn render-thread!+ [thread-id]
-  (p/let [messages (fetch-messages!+ thread-id)]
+  (p/let [thread (openai-api/openai.beta.threads.retrieve thread-id)
+          messages (fetch-messages!+ thread-id)]
     (ui/clear!)
-    (ui/render! (messages->string messages))))
+    (ui/render! (messages->string messages))
+    (swap! db/!db assoc :last-message (first messages))
+    (swap! db/!db assoc :thread+ thread)))
 
 (comment
+  (:last-message @db/!db)
+  (:thread+ @db/!db)
   (render-thread!+ "thread_qhEKFeZHlRcoml9lTnOQMdC4")
+  (render-thread!+ "thread_jp4AD8U9i9DY4vCnpuuyTYWT")
   (def messages (util/->clj (-> api-messages .-body .-data)))
   (map message-text messages)
   (message-info (first messages))

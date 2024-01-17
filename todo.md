@@ -4,7 +4,7 @@
 * [x] Render thread (session)
 * [ ] Restore last chat session on start
 * [ ] Explore how to control the costs
-
+* [ ] Stop sending around thread everywhere we only need the thread-id
 ## Function calling
 * [x] current-file-path, because assumptions...
 * [ ] We need much better prompting, guiding the AI how to use the functions
