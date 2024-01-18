@@ -1,5 +1,6 @@
 (ns backseat-driver.util
-  (:require [promesa.core :as p]))
+  (:require [promesa.core :as p]
+            [clojure.set :as set]))
 
 (defn ->clj [o] (js->clj o :keywordize-keys true))
 
@@ -24,7 +25,39 @@
      (.finally (fn []
                  (js/clearTimeout @!timeout))))))
 
+(defn valid-shallow-map? [m spec]
+  (every? (fn [[k v]]
+            (and (spec k)
+                 ((spec k) v)))
+          m))
+
 (comment
+  (valid-shallow-map? {:get-context "current-ns"}
+                      {:get-context #{"current-form" "current-ns"}})
+  ;; => true
+  (valid-shallow-map? {:function-1 "valid-f1-arg-1"
+                       :function-2 "valid-f2-arg-3"}
+                      {:function-1 #{"valid-f1-arg-1" "valid-f1-arg-2"}
+                       :function-2 #{"valid-f2-arg-1" "valid-f2-arg-2" "valid-f2-arg-3"}})
+  ;; => true
+
+  (valid-shallow-map? {:get-context "current-ns"
+                       :invalid "current-ns"}
+                      {:get-context #{"current-form" "current-ns"}})
+  ;; => false
+
+  (valid-shallow-map? {:get-context "invalid"}
+                      {:get-context #{"current-form" "current-ns"}})
+  ;; => false
+  (valid-shallow-map? {:x "current-ns"}
+                      {:get-context #{"current-form" "current-ns"}})
+  ;; => false
+
+
+  :rcf)
+
+(comment
+
 
   ;; I don't know how to test this properly, but it works where we are using it =)
   (with-timeout+

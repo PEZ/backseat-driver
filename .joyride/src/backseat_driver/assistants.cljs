@@ -15,6 +15,7 @@
 (def ^:private gpt4 "gpt-4-1106-preview")
 (def ^:private gpt3 "gpt-3.5-turbo-1106")
 
+(def available-functions #{"get-context"})
 
 (def context-part->function
   {"current-file-content" context/current-file-content
@@ -25,21 +26,24 @@
    "current-top-level-defines" context/current-top-level-defines
    "current-selection" context/selection})
 
-(def functions [{:type "function",
-                 :function
-                 {:name "get-context",
-                  :description prompts/get-context-description,
-                  :parameters
-                  {:type "object",
-                   :properties
-                   {:context-part {:type "string", :enum (keys context-part->function)}},
-                   :required ["context-part"]}}}])
+(def function-arguments
+  {:get-context (set (keys context-part->function))})
+
+(def functions-conf [{:type "function",
+                      :function
+                      {:name "get-context",
+                       :description prompts/get-context-description,
+                       :parameters
+                       {:type "object",
+                        :properties
+                        {:context-part {:type "string", :enum (function-arguments :get-context)}},
+                        :required ["context-part"]}}}])
 
 (def assistant-conf {:name "Backseat Driver"
                      :instructions prompts/system-instructions
                      :tools (into [{:type "code_interpreter"}
                                    #_{:type "retrieval"}]
-                                  functions)
+                                  functions-conf)
                      :model gpt4})
 
 (defn get-or-create-assistant!+ []
@@ -71,23 +75,68 @@
      :output (pr-str (context-fn))}))
 
 (defn function-call->call-info [tool-function-call]
-  {:call-id (:id tool-function-call)
-   :function-name (-> tool-function-call :function :name)
-   :arguments (-> (-> tool-function-call :function :arguments)
-                  js/JSON.parse
-                  util/->clj)})
+  (let [function-name (-> tool-function-call :function :name)
+        args-json (-> tool-function-call :function :arguments)
+        call-id (:id tool-function-call)]
+    (when-not (available-functions function-name)
+      (throw (ex-info "Bad function name"
+                      {:causes #{:function-name :non-existant}
+                       :function-name function-name
+                       :call-id call-id
+                       :valid-functions available-functions})))
+    (when (or (not args-json) (empty? args-json))
+      (throw (ex-info "Arguments missing"
+                      {:causes #{:arguments :malformed}
+                       :arguments args-json
+                       :call-id call-id
+                       :hint "Non-empty arguments required"})))
+    (let [arguments (-> args-json
+                        js/JSON.parse
+                        util/->clj)]
+      (def arguments arguments)
+      (when-not (util/valid-shallow-map? arguments function-arguments)
+        (throw (ex-info "Bad arguments"
+                        {:causes #{:arguments :malformed}
+                         :arguments args-json
+                         :call-id call-id
+                         :valid-arguments function-arguments})))
+      {:call-id call-id
+       :function-name function-name
+       :arguments arguments})))
+
+(comment
+  (js/JSON.parse "{\"get-context\":\"current-top-level-form\"}")
+  (pr-str (js/JSON.stringify (clj->js {:get-context "current-top-level-form"})))
+  (util/valid-shallow-map? {:get-context "current-top-level-form"} function-arguments)
+  (util/valid-shallow-map? {:get-context "current-"} function-arguments)
+  (util/valid-shallow-map? {:gpt-hallucinates "current-form"} function-arguments)
+  :rcf)
 
 (defn type-function? [call]
   (= "function" (:type call)))
 
 (defn tool-calls->outputs [run]
   (def run run)
-  (->> (get-in run [:required_action :submit_tool_outputs :tool_calls])
-       (filter type-function?)
-       (map function-call->call-info)
-       (map call-info->tool-output)))
+  (try
+    (->> (get-in run [:required_action :submit_tool_outputs :tool_calls])
+         (filter type-function?)
+         (map function-call->call-info)
+         (doall) ;
+         (map call-info->tool-output))
+    (catch :default e
+      (def e e)
+      (let [info (ex-data e)]
+        [{:tool_call_id (:call-id info)
+          :output (pr-str info)}]))))
 
 (comment
+  (pr-str (ex-info "BOO" {:causes "Ditt fel ju!"}))
+  (tool-calls->outputs run)
+  (take 2 (map identity (range 10)))
+  ;; => #error {:message "Bad function name", :data {:causes #{:function-name :non-existant}, :function-name "get_context", :call-id "call_Ace146ivFJfl4dIs0MftHouM", :valid-functions #{"get-context"}}}
+
+
+
   (->> '({:function {:arguments "{\"context-part\":\"current-form\"}", :name "get-context"},
           :id "call_vaRD4ybll9hRLzcttSSiSbnD",
           :type "function"})
@@ -195,7 +244,7 @@
                        :model gpt4
                        :tools (into [{:type "code_interpreter"}
                                      #_{:type "retrieval"}]
-                                    functions)
+                                    functions-conf)
                        :instructions prompts/system-instructions}))]
         (retrieve-poller+ (.-id thread) (.-id run)))
       (p/catch (fn [[thread-id run-id status :as poll-info]]
