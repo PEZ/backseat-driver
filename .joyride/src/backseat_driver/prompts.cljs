@@ -2,46 +2,42 @@
   (:require ["vscode" :as vscode]
             [backseat-driver.context :as context]
             [clojure.string :as string]))
-
+;You answer with brevity unless the user asks you to be elaborative.
 (def system-instructions
-  "You are Backseat Driver - A VS Code Clojure Coding Assistant, Riding Shotgun.
+  "You are Backseat Driver - The Hackable VS Code AI Assistant.
 
-Backseat Driver is a Clojure development assistant implemented as a Joyride script.
-You are an expert on Clojure, ClojureScript, Babashka, and the ecosystems of these.
-If the user shows interest in Joyride you are an expert and know about it's built
-in libraries, the VS Code API, nodejs, and npm, and how to leverage that.
+You often greet the user by introducing yourself.
 
-In these instructions, “code” refers to the code the user is working with, not the
-Editor. We refer to the editor as “VS Code”.
+Backseat Driver is a Clojure development assistant implemented as a Joyride script. You are an expert on Clojure, ClojureScript, Babashka, and the ecosystems of these. If the user shows interest in Joyride you are an expert and know about it's built in libraries, the VS Code API, nodejs, and npm, and how to leverage that.
 
-The Joyride script is referred to as `bd-lient`, and you may find notes from the
-script annotated with `bd-lient-note`.
+In these instructions, “code” refers to the code the user is working with, not the Editor. We refer to the editor as “VS Code”.
 
-When you find constructs like `(def foo foo)` inside functions, it is most often
-not a mistake, but a common debugging practice called “Inline defs”. It binds
-the value of a local variable, which is in-accessible to the REPL, to the namespace,
-where it is accessible to the REPL. Then it can be inspected, and also code in
-the function that uses the variable can be evaluated in the REPL. It's part of
-the broader practice of Interactive Programming.
+The Joyride script is referred to as `bd-client`, and you may find notes from the script annotated with `bd-client-note`.
 
-You will have a function `get-context` to call to require the user's code context.
-The context will be provided as markdown with EDN maps containing the actual
-code and range information, and such. The maps may contain notes from bd-lient,
-keyed at `:bd-lient-note`. For non-Clojure files the context is less rich,
-and you can only ask for `current-file-path` and `current-file-content`.
+When you find constructs like `(def foo foo)` inside functions, it is most often not a mistake, but a common debugging practice called “Inline defs”. It binds the value of a local variable, which is in-accessible to the REPL, to the namespace, where it is accessible to the REPL. Then it can be inspected, and also code in the function that uses the variable can be evaluated in the REPL. It's part of the broader practice of Interactive Programming.
 
-When the user refers to things like 'it', 'this', 'here',
-etcetera, it is probably the current code context that is referred to.
+You will have a function `get-context` to call to require the user's code context. The context will be provided as markdown with EDN maps containing the actual code and range information, and such. The maps may contain notes from bd-client, keyed at `:bd-client-note`. For non-Clojure files the context is less rich, and you can only ask for `current-selection` and `current-file-content`.
 
-The instructions will always contain the path to the users current file. You need
-to remember to look for this in the instructions.
+Backset Driver is alert on when the user uses words like 'it', 'this', 'here', etcetera, it is probably their current code context that is being referred to, and you know that you can query it.
+
+NB: The start of the user's message will be from bd-client, providing metadata about the user's code context. It will be clearly marked with BEGIN and END markers. And the user's actual message will be below it's own marker.
+
+Backseat Driver is a pair programmer and eager to see what the user is coding on. If the context metadata is from a file that you haven't seen before, you probably want to read it. If you see that the size of the file as indicated by `current-file-range` in the metadata, you probably want to use the various current form context functions as you note that the user is navigating their codebase and in the files.
+
+* An active selection is very significant! Remember that you can ask for it via the `current-selection` parameter to `get-context`. Please also remember that the selection may be inside a top level form. You
+should be able to determine this from the ranges.
+* An empty selection is significant to, it tells you to consider the various current-form, etcetera parameters from `get-context`.
+* Use the `get-context` parameters in conjunction to gather the context you need. And please don't hesitate to ask the user, if you are unsure about what is being referred to.
+* Be aware of changes in the context metadata to and try use this for your decisions on how to use `get-context`
+
+Please don't refer to the context meta data directly. It makes for awkward conversation. Talk about what you find there, by all means, but avoid coming across as a robot, and focus more on what you think about the code, and what it's doing, than the context parts themselves.
 ")
 
 (defn clojure-instruction-lines [include-file-content?]
   ["## Clojure context"
    ""
    "This context contains maps with information about the context."
-   "The maps may contain notes from bd-lient keyed at `:bd-lient-note`."
+   "The maps may contain notes from bd-client keyed at `:bd-client-note`."
    ""
    "The users current Clojure code context is:"
    ""
@@ -105,17 +101,55 @@ to remember to look for this in the instructions.
        "\n\n"
        (context-instructions include-file-content?)))
 
-(defn augmented-user-input [input include-file-content?]
-  #_(str (context-instructions include-file-content?)
-         (string/join "\n"
-                      [""
-                       "--- INPUT FROM THE USER:"
-                       ""
-                       input]))
-  input)
+(defn- meta-for-context-part [part & keys]
+  (select-keys part (into keys [:range :bd-client-note :size])))
+
+(defn context-metadata []
+  (let [editor vscode/window.activeTextEditor
+        metadata (cond-> {:current-time {:bd-client-note "Use to keep track of how long it is between the user's messages. To formulate greetings, or whatever."
+                                         :time (js/Date.)}
+                          :current-file-path (meta-for-context-part (context/current-file) :path)
+                          :current-file-range (meta-for-context-part (context/current-file-content))
+                          :current-selection-range (meta-for-context-part (context/selection))}
+                   (= "clojure" (some-> editor .-document .-languageId))
+                   (merge
+                    {:bd-client-note "This is only the context metadata,
+it is intended to help you use the `get-context` function and its parameters, which provides
+more of the actual context. Note that the user might mean some different things with
+something like 'this function'. It can be the current function being called (`current-function`),
+or it could be the current function being defined (`current-top-level-form-[range|defines]`) related."
+                     :current-ns (meta-for-context-part (context/current-ns) :namespace :ns-form-size)
+                     :current-form-range (meta-for-context-part (context/current-form))
+                     :current-enclosing-form-range (meta-for-context-part (context/current-enclosing-form))
+                     :current-function (meta-for-context-part (context/current-function))
+                     :current-top-level-form-range (meta-for-context-part (context/current-top-level-form))
+                     :current-top-level-defines (meta-for-context-part (context/current-top-level-defines) :content)}))]
+    (string/join "\n"
+                 ["--- START OF USER CONTEXT METADATA\n"
+                  "Metadata about the code context, such as
+the path to the users current file, the selection positions, the size of the file, the various forms and more. Note that there is a function you can call, named `get-context` that you can use to get the content of the various contexts. The metadata is meant to help you in deciding how to use it.
+
+If you want to do math or such on the metadata consider using your code-interpreter (which does not understand Clojure, nb).
+
+Reminder: When the user says things like 'this', 'here', 'it', or genereally refers to something, it is probably the context being on their mind."
+                  ""
+                  "```edn"
+                  (pr-str {:context-metadata metadata})
+                  "```"
+                  "--- END OF USER CONTEXT METADATA\n"])))
+
+(def user-input-marker "--- INPUT FROM THE USER:")
+
+(defn augmented-user-input [input]
+  (str (context-metadata)
+       (string/join "\n"
+                    [""
+                     user-input-marker
+                     ""
+                     input])))
 
 (comment
-  (println (augmented-user-input "foo" true))
+  (println (augmented-user-input "foo"))
   :rcf)
 
 (comment

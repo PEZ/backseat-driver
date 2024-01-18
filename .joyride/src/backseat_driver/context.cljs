@@ -20,27 +20,36 @@
 
 (defn current-form []
   (assoc (range-response->clj (calva/ranges.currentForm))
-         :bd-lient-note "Apply your knowledge about the significance of the current form."))
+         :bd-client-note "Apply your knowledge about the significance of the current form."))
 
 (defn current-enclosing-form []
   (assoc (range-response->clj (calva/ranges.currentEnclosingForm))
-         :bd-lient-note "The current enclosing form is the list/etc that the user is typing into.
-                           Together with the current selection, this can help you figure out what
-                           the user is up to."))
+         :bd-client-note "The current enclosing form is the list/etc that the user is typing into.
+Together with the current selection, this can help you figure out what
+the user is up to."))
+
+(defn current-function []
+  (assoc (range-response->clj (calva/ranges.currentFunction))
+         :bd-client-note "The symbol at call postion of the closest enclosing list. So, the
+function call the user is crafting."))
+
+(defn current-top-level-defines []
+  (assoc (range-response->clj (calva/ranges.currentTopLevelDef))
+         :bd-client-note "Typically the name of the function or variable being defined."))
 
 (defn current-top-level-form []
   (assoc (range-response->clj (calva/ranges.currentTopLevelForm))
-         :bd-lient-note "The current top level form is typically the current function definition.
-                           Or some other definition (`def` or, often some macro starting with `def`).
-                           If it doesn't look like a definition, it could be some testing code,
-                           often inside a rich comment form."))
+         :bd-client-note "The current top level form is typically the current function or
+variable definition. If it doesn't look like a definition, it could
+be some testing code, often inside a rich comment form."))
 
 (defn selection []
   (let [document vscode/window.activeTextEditor.document]
     {:range (range->offsets vscode/window.activeTextEditor.selection)
      :content (-> document (.getText vscode/window.activeTextEditor.selection))
-     :bd-lient-note "If the selection is larger than the top level form,
-                       the current forms are probably less significant"}))
+     :bd-client-note "When the start and end of the range are the same, there is only a
+cursor postion and no selection. When there is a selection, it could signify that the
+user wants your attention on it."}))
 
 (def max-file-size 20000)
 
@@ -52,7 +61,7 @@
        :content text}
       {:range [0 size]
        :content (subs text 0 max-file-size)
-       :bd-lient-note "The content is truncated to the max file size of 200000 characters."})))
+       :bd-client-note "The content is truncated to the max file size of 200000 characters."})))
 
 (defn selection-and-current-forms [include-file-content?]
   (let [{selection-range :range selection-content :content} (selection)
@@ -60,15 +69,17 @@
     (merge {:current-top-level-form (current-top-level-form)
             :current-form current-form}
            (if (= selection-range (:range  current-form))
-             {:selection :current-form}
-             {:selection {:range selection-range
+             {:current-selection :current-form}
+             {:current-selection {:range selection-range
                           :content selection-content}})
            (when include-file-content?
              {:file-content (current-file-content)}))))
 
 (defn current-ns []
   (let [[namespace ns-form] (calva/document.getNamespaceAndNsForm)]
-    {:namespace namespace
+    {:bd-client-note "Apply your knowledge about Clojure namespaces, how they correspond to file paths, etcetera."
+     :namespace namespace
+     :ns-form-size (count ns-form)
      :ns-form ns-form}))
 
 (defn current-file []

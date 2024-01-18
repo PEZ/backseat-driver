@@ -5,7 +5,9 @@
             [promesa.core :as p]
             [backseat-driver.ui :as ui]
             [clojure.string :as string]
-            [backseat-driver.db :as db]))
+            [backseat-driver.db :as db]
+            [backseat-driver.context :as context]
+            [backseat-driver.prompts :as prompts]))
 
 (def ^:private threads-storage-key "backseat-driver-threads")
 (def ^:private max-title-length 120)
@@ -62,11 +64,15 @@
   {:role (:role message)
    :text (message-text message)})
 
+(defn trim-user-text [text start-marker]
+  (let [[_ user-message] (string/split text start-marker)]
+    (string/triml user-message)))
+
 (defn renderable-message [info]
   (def info info)
   (cond
     (= "assistant" (:role info)) (ui/assistant-says (:text info))
-    (= "user" (:role info))      (ui/user-says (:text info))
+    (= "user" (:role info))      (ui/user-says (trim-user-text (:text info) prompts/user-input-marker))
     :else (str "Unknown role: " (:role info))))
 
 (defn messages->string [messages]
