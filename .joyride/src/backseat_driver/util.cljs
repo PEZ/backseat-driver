@@ -25,34 +25,31 @@
      (.finally (fn []
                  (js/clearTimeout @!timeout))))))
 
-(defn valid-shallow-map? [m spec]
-  (every? (fn [[k v]]
-            (and (spec k)
-                 ((spec k) v)))
-          m))
+(defn map-matches-spec? [m spec]
+  (if (map? m)
+    (every? (fn [[k v]]
+              (let [spec-value (get spec k)]
+                (and spec-value
+                     (if (map? v)
+                       (map-matches-spec? v spec-value)
+                       (if (set? spec-value)
+                         (contains? spec-value v)
+                         (= spec-value v))))))
+            m)
+    (= m spec)))
 
 (comment
-  (valid-shallow-map? {:get-context "current-ns"}
-                      {:get-context #{"current-form" "current-ns"}})
+  (map-matches-spec? {:get_context {:context-part "current-ns"}}
+                      {:get_context {:context-part #{"current-form" "current-ns"}}})
   ;; => true
-  (valid-shallow-map? {:function-1 "valid-f1-arg-1"
-                       :function-2 "valid-f2-arg-3"}
-                      {:function-1 #{"valid-f1-arg-1" "valid-f1-arg-2"}
-                       :function-2 #{"valid-f2-arg-1" "valid-f2-arg-2" "valid-f2-arg-3"}})
+  (map-matches-spec? {:a {:b {:c {:d 9}}}}
+                     {:a {:b {:c {:d 9}
+                              :e {:f 5}}}})
   ;; => true
-
-  (valid-shallow-map? {:get-context "current-ns"
-                       :invalid "current-ns"}
-                      {:get-context #{"current-form" "current-ns"}})
+  (map-matches-spec? {:a {:b {:c {:d 2}}}}
+                     {:a {:b {:c {:d #{1 3}}
+                              :e {:f 5}}}})
   ;; => false
-
-  (valid-shallow-map? {:get-context "invalid"}
-                      {:get-context #{"current-form" "current-ns"}})
-  ;; => false
-  (valid-shallow-map? {:x "current-ns"}
-                      {:get-context #{"current-form" "current-ns"}})
-  ;; => false
-
 
   :rcf)
 
