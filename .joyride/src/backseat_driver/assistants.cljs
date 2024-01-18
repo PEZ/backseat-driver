@@ -15,7 +15,7 @@
 (def ^:private gpt4 "gpt-4-1106-preview")
 (def ^:private gpt3 "gpt-3.5-turbo-1106")
 
-(def available-functions #{"get-context"})
+(def available-functions #{"get_context"})
 
 (def context-part->function
   {"current-file-content" context/current-file-content
@@ -27,16 +27,18 @@
    "current-selection" context/selection})
 
 (def function-arguments
-  {:get-context (set (keys context-part->function))})
+  {:get_context {:context-part (set (keys context-part->function))}})
 
 (def functions-conf [{:type "function",
                       :function
-                      {:name "get-context",
-                       :description prompts/get-context-description,
+                      {:name "get_context",
+                       :description prompts/get_context-description,
                        :parameters
                        {:type "object",
                         :properties
-                        {:context-part {:type "string", :enum (function-arguments :get-context)}},
+                        {:context-part {:type "string", :enum (-> function-arguments
+                                                                  :get_context
+                                                                  :context-part)}},
                         :required ["context-part"]}}}])
 
 (def assistant-conf {:name "Backseat Driver"
@@ -78,37 +80,42 @@
   (let [function-name (-> tool-function-call :function :name)
         args-json (-> tool-function-call :function :arguments)
         call-id (:id tool-function-call)]
-    (when-not (available-functions function-name)
-      (throw (ex-info "Bad function name"
-                      {:causes #{:function-name :non-existant}
-                       :function-name function-name
-                       :call-id call-id
-                       :valid-functions available-functions})))
-    (when (or (not args-json) (empty? args-json))
-      (throw (ex-info "Arguments missing"
-                      {:causes #{:arguments :malformed}
-                       :arguments args-json
-                       :call-id call-id
-                       :hint "Non-empty arguments required"})))
-    (let [arguments (-> args-json
-                        js/JSON.parse
-                        util/->clj)]
-      (def arguments arguments)
-      (when-not (util/valid-shallow-map? arguments function-arguments)
-        (throw (ex-info "Bad arguments"
-                        {:causes #{:arguments :malformed}
-                         :arguments args-json
-                         :call-id call-id
-                         :valid-arguments function-arguments})))
-      {:call-id call-id
-       :function-name function-name
-       :arguments arguments})))
+    (cond
+      (not (available-functions function-name))
+      {:error (ex-info "Bad function name"
+                       {:causes #{:function-name :non-existant}
+                        :function-name function-name
+                        :call-id call-id
+                        :valid-functions available-functions})}
+
+      (or (not args-json) (empty? args-json))
+      {:error (ex-info "Arguments missing"
+                       {:causes #{:arguments :malformed}
+                        :arguments args-json
+                        :call-id call-id
+                        :hint "Non-empty arguments required"})}
+
+      :else
+      (let [arguments (-> args-json
+                          js/JSON.parse
+                          util/->clj)]
+        (def arguments arguments)
+        (def function-name function-name)
+        (if (util/map-matches-spec? {(keyword function-name) arguments} function-arguments)
+          {:call-id call-id
+           :function-name function-name
+           :arguments arguments}
+          {:error (ex-info "Bad arguments"
+                           {:causes #{:arguments :malformed}
+                            :arguments args-json
+                            :call-id call-id
+                            :valid-arguments function-arguments})})))))
 
 (comment
-  (js/JSON.parse "{\"get-context\":\"current-top-level-form\"}")
-  (pr-str (js/JSON.stringify (clj->js {:get-context "current-top-level-form"})))
-  (util/valid-shallow-map? {:get-context "current-top-level-form"} function-arguments)
-  (util/valid-shallow-map? {:get-context "current-"} function-arguments)
+  (js/JSON.parse "{\"get_context\":\"current-top-level-form\"}")
+  (pr-str (js/JSON.stringify (clj->js {:get_context "current-top-level-form"})))
+  (util/valid-shallow-map? {:get_context "current-top-level-form"} function-arguments)
+  (util/valid-shallow-map? {:get_context "current-"} function-arguments)
   (util/valid-shallow-map? {:gpt-hallucinates "current-form"} function-arguments)
   :rcf)
 
@@ -117,31 +124,29 @@
 
 (defn tool-calls->outputs [run]
   (def run run)
-  (try
-    (->> (get-in run [:required_action :submit_tool_outputs :tool_calls])
-         (filter type-function?)
-         (map function-call->call-info)
-         (doall) ;
-         (map call-info->tool-output))
-    (catch :default e
-      (def e e)
-      (let [info (ex-data e)]
-        [{:tool_call_id (:call-id info)
-          :output (pr-str info)}]))))
+  (->> (get-in run [:required_action :submit_tool_outputs :tool_calls])
+       (filter type-function?)
+       (map function-call->call-info)
+       (map (fn [call-info]
+              (def call-info call-info)
+              (if (:error call-info)
+                (let [error (:error call-info)]
+                  {:tool_call_id (:call-id (ex-data error))
+                   :output (pr-str error)})
+                (call-info->tool-output call-info))))))
 
 (comment
-  (pr-str (ex-info "BOO" {:causes "Ditt fel ju!"}))
   (tool-calls->outputs run)
-  (take 2 (map identity (range 10)))
-  ;; => #error {:message "Bad function name", :data {:causes #{:function-name :non-existant}, :function-name "get_context", :call-id "call_Ace146ivFJfl4dIs0MftHouM", :valid-functions #{"get-context"}}}
 
+  (->> {:required_action
+        {:submit_tool_outputs
+         {:tool_calls [{:function {:arguments "{\"context-part\":\"current-form\"}"
+                                   :name "get_context"}
+                        :id "call_vaRD4ybll9hRLzcttSSiSbnD"
+                        :type "function"}]}}}
+       (tool-calls->outputs))
 
-
-  (->> '({:function {:arguments "{\"context-part\":\"current-form\"}", :name "get-context"},
-          :id "call_vaRD4ybll9hRLzcttSSiSbnD",
-          :type "function"})
-       (map function-call->call-info)
-       (map call-info->tool-output))
+  (pr-str (ex-info "BOO" {:causes "Ditt fel ju!"}))
   :rcf)
 
 (def ^:private done-statuses #{"completed" "failed" "expired" "cancelled"})
