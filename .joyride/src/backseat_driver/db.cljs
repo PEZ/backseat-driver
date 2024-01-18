@@ -7,7 +7,8 @@
                            :channel nil
                            :thread-running? false
                            :interrupted? false
-                           :channel-shown? false})
+                           :channel-shown? false
+                           :ws-activated? false})
 
 (defonce !db (atom nil))
 

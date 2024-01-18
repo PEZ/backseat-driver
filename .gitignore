@@ -37,3 +37,6 @@ bot-sessions/
 .lsp/.cache/
 .lsp/sqlite*.db
 .calva/output-window/
+
+# VS Code
+.vscode-test/

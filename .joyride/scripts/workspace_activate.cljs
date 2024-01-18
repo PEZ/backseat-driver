@@ -1,6 +1,8 @@
 (ns workspace-activate
   (:require [joyride.core :as joyride]
-            [backseat-driver.app]))
+            [backseat-driver.app]
+            [test-runner.runner] ;; The test runner needs to know when the workspace is activated
+            ))
 
 ;; This script only initializes the Backseat Driver app,
 ;; It must be done before any keyboard shortcuts for the app works.
@@ -13,7 +15,12 @@
 
 (defn- -main []
   (println "Hello World, from Backseat Driver demo workspace_activate.cljs script")
-  (backseat-driver.app/init!))
+  (if js/process.env.JOYRIDE_TEST_RUNNER_HEADLESS
+    (println "HEADLESS TEST RUN: Not Initializing Backseat Driver app.")
+    (do
+      (println "Initializing Backseat Driver app...")
+      (backseat-driver.app/init!)))
+  (test-runner.runner/workspace-activated!))
 
 (when (= (joyride/invoked-script) joyride/*file*)
   (-main))

@@ -69,30 +69,57 @@
 
 (def assist-button-id "backseat-driver-assist-me-button")
 
-(defn show-palette! []
-  (p/let [items (let [thread-running? (:thread-running? @db/!db)]
-                  (cond-> []
-                    thread-running?
-                    (conj {:label "$(sync~spin) Stop waiting for response"
-                           :function interrupt-polling!})
+(def palette-function-name->fn
+  {:interrupt-polling! interrupt-polling!
+   :ask-for-assistance!+ ask-for-assistance!+
+   :create-new-session!+ create-new-session!+
+   :show-channel! show-channel!})
 
-                    (not thread-running?)
-                    (conj {:label "Advice Me"
-                           :function ask-for-assistance!+})
+(defn- palette-items [db]
+  (let [thread-running? (:thread-running? db)]
+    (cond-> []
+      thread-running?
+      (conj {:label "$(sync~spin) Stop waiting for response"
+             :function :interrupt-polling!})
 
-                    (not thread-running?)
-                    (conj {:label "Start new session"
-                           :function create-new-session!+})
+      (not thread-running?)
+      (conj {:label "Advice Me"
+             :function :ask-for-assistance!+})
 
-                    :always
-                    (conj {:label "Show Output Channel"
-                           :function show-channel!})))
+      (not thread-running?)
+      (conj {:label "Start new session"
+             :function :create-new-session!+})
+
+      :always
+      (conj {:label "Show Output Channel"
+             :function :show-channel!}))))
+
+(comment
+  (= [{:function :ask-for-assistance!+ :label "Advice Me"}
+      {:function :create-new-session!+ :label "Start new session"}
+      {:function :show-channel! :label "Show Output Channel"}]
+     (palette-items {:thread-running? false}))
+  (def menu-while-running (palette-items {:thread-running? true}))
+  :rcf)
+
+(defn show-palette! [db]
+  (p/let [items (->> (palette-items db)
+                     (map (fn [item]
+                            (update item :function palette-function-name->fn))))
           pick (vscode/window.showQuickPick
                 (clj->js items)
                 #js {:title "Backseat Driver"
                      :placeHolder "Gimme the keys, I can drive!"})]
     (when pick
       ((.-function pick)))))
+
+(comment
+  (show-palette! @db/!db)
+  (show-palette! {:thread-running? false})
+  (show-palette! {:thread-running? true})
+
+  db/!db
+  :rcf)
 
 (defn add-assist-button! []
   (let [item (vscode/window.createStatusBarItem assist-button-id
