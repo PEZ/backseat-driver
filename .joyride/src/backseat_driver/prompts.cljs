@@ -12,11 +12,11 @@ Backseat Driver is a Clojure development assistant implemented as a Joyride scri
 
 In these instructions, “code” refers to the code the user is working with, not the Editor. We refer to the editor as “VS Code”.
 
-The Joyride script is referred to as `bd-client`, and you may find notes from the script annotated with `bd-client-note`.
+The Joyride script is referred to as `bd-client`, and you may find notes from the script annotated with `description`.
 
 When you find constructs like `(def foo foo)` inside functions, it is most often not a mistake, but a common debugging practice called “Inline defs”. It binds the value of a local variable, which is in-accessible to the REPL, to the namespace, where it is accessible to the REPL. Then it can be inspected, and also code in the function that uses the variable can be evaluated in the REPL. It's part of the broader practice of Interactive Programming.
 
-You will have a function `get-context` to call to require the user's code context. The context will be provided as markdown with EDN maps containing the actual code and range information, and such. The maps may contain notes from bd-client, keyed at `:bd-client-note`. For non-Clojure files the context is less rich, and you can only ask for `current-selection` and `current-file-content`.
+You will have a function `get-context` to call to require the user's code context. The context will be provided as markdown with EDN maps containing the actual code and range information, and such. The maps may contain notes from bd-client, keyed at `:description`. For non-Clojure files the context is less rich, and you can only ask for `current-selection` and `current-file-content`.
 
 Backset Driver is alert on when the user uses words like 'it', 'this', 'here', etcetera, it is probably their current code context that is being referred to, and you know that you can query it.
 
@@ -37,7 +37,7 @@ Please don't refer to the context meta data directly. It makes for awkward conve
   ["## Clojure context"
    ""
    "This context contains maps with information about the context."
-   "The maps may contain notes from bd-client keyed at `:bd-client-note`."
+   "The maps may contain notes from bd-client keyed at `:description`."
    ""
    "The users current Clojure code context is:"
    ""
@@ -101,33 +101,37 @@ Please don't refer to the context meta data directly. It makes for awkward conve
        "\n\n"
        (context-instructions include-file-content?)))
 
-(defn- meta-for-context-part [part & keys]
-  (select-keys part (into keys [:range :bd-client-note :size])))
+(defn- meta-for-context-part [part get-context-param more-keys]
+  (cond-> (select-keys part (into more-keys [:range :description :size]))
+    get-context-param (assoc :context-part get-context-param)))
+
+(comment
+  (-> {:a 1 :b 2 :c 2}
+      (select-keys [:b :c]))
+  :rcf)
 
 (defn context-metadata []
   (let [editor vscode/window.activeTextEditor
-        metadata (cond-> {:current-time {:bd-client-note "Use to keep track of how long it is between the user's messages. To formulate greetings, or whatever."
+        metadata (cond-> {:description ""
+                          :current-time {:description "Use to e.g. keep track of how long it is between the user's messages. To formulate greetings, or whatever."
                                          :time (js/Date.)}
-                          :current-file-path (meta-for-context-part (context/current-file) :path)
-                          :current-file-range (meta-for-context-part (context/current-file-content))
-                          :current-selection-range (meta-for-context-part (context/selection))}
+                          :current-file-path (meta-for-context-part (context/current-file) nil [:path])
+                          :current-file-range (meta-for-context-part (context/current-file-content) "current-file-content" [])
+                          :current-selection-range (meta-for-context-part (context/selection) "current-selection" [])}
                    (= "clojure" (some-> editor .-document .-languageId))
                    (merge
-                    {:bd-client-note "This is only the context metadata,
-it is intended to help you use the `get-context` function and its parameters, which provides
-more of the actual context. Note that the user might mean some different things with
-something like 'this function'. It can be the current function being called (`current-function`),
-or it could be the current function being defined (`current-top-level-form-[range|defines]`) related."
-                     :current-ns (meta-for-context-part (context/current-ns) :namespace :ns-form-size)
-                     :current-form-range (meta-for-context-part (context/current-form))
-                     :current-enclosing-form-range (meta-for-context-part (context/current-enclosing-form))
-                     :current-function (meta-for-context-part (context/current-function))
-                     :current-top-level-form-range (meta-for-context-part (context/current-top-level-form))
-                     :current-top-level-defines (meta-for-context-part (context/current-top-level-defines) :content)}))]
+                    {:current-ns (meta-for-context-part (context/current-ns) "current-ns" [:namespace :ns-form-size])
+                     :current-form-range (meta-for-context-part (context/current-form) "current-form" [])
+                     :current-enclosing-form-range (meta-for-context-part (context/current-enclosing-form) "current-enclosing-form" [])
+                     :current-function (meta-for-context-part (context/current-function) nil [:content])
+                     :current-top-level-form-range (meta-for-context-part (context/current-top-level-form) "current-top-level-form" [])
+                     :current-top-level-defines (meta-for-context-part (context/current-top-level-defines) nil [:content])}))]
     (string/join "\n"
                  ["--- START OF USER CONTEXT METADATA\n"
                   "Metadata about the code context, such as
-the path to the users current file, the selection positions, the size of the file, the various forms and more. Note that there is a function you can call, named `get-context` that you can use to get the content of the various contexts. The metadata is meant to help you in deciding how to use it.
+the path to the users current file, the selection positions, the size of the file, the various forms and more. Note that there is a function you can call, named `get-context` that you can use to get the content of the various contexts. The metadata is meant to help you in deciding how to use it. The metadata either contains a `:context-part` entry, telling you which `context-part` parameter to give to `get-context`. Or it contains a `:content` entry, in which case there is no further content to fetch.
+
+Note that the user might mean some different things with something like 'this function'. It can be the current function being called (`current-function`), or it could be the current function being defined (`current-top-level-form-[range|defines]`) related.
 
 If you want to do math or such on the metadata consider using your code-interpreter (which does not understand Clojure, nb).
 

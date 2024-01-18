@@ -20,7 +20,7 @@
 
 (defn current-form []
   (assoc (range-response->clj (calva/ranges.currentForm))
-         :bd-client-note "Apply your knowledge about the significance of the current form."))
+         :bd-client-note "The Current Form in the Calva sense."))
 
 (defn current-enclosing-form []
   (assoc (range-response->clj (calva/ranges.currentEnclosingForm))
