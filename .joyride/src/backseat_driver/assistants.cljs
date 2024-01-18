@@ -17,12 +17,10 @@
 
 
 (def context-part->function
-  {;"current-file-path" context/current-file
-   "current-file-content" context/current-file-content
+  {"current-file-content" context/current-file-content
    "current-ns" context/current-ns
    "current-form" context/current-form
    "current-enclosing-form" context/current-enclosing-form
-   "current-function" context/current-function
    "current-top-level-form" context/current-top-level-form
    "current-top-level-defines" context/current-top-level-defines
    "current-selection" context/selection})
@@ -30,16 +28,7 @@
 (def functions [{:type "function",
                  :function
                  {:name "get-context",
-                  :description "Get the user's current code context. Use the context meta data you have been provided to form decisions on if, when, and with which parameters to use this function. Note that most often the user *will* be talking about something in their context. When the user mentions things like 'this', 'here', they are more probably referring to the code context, not to their own message.
-
-You can think of the parameters as context parts:
-* `current-selection`: What the user has selected in the document will be evaluated on ctrl+enter.
-* `current-form`: The Current Form in the Calva sense. The thing that will be evaluated on ctrl+enter if there is no selection. If the current-form is short (consult the metadata) it is probably just a symbol or word, and you may be more (or also) interested in `current-enclosing-form` or `current-top-level-form`. (Clojure only)
-* `current-enclosing-form`: The form containing the `current-form` (Clojure only)
-* `current-top-level-form`: Typically the function or namespace variable being defined. Otherwise it is probably some code meant for testing things. Rich Comment Forms is a common and encouraged practice, remember. (Clojure only)
-* `current-top-level-defines`: The function or namespace variable being defined by `current-top-level-form` (Clojure only)
-* `current-function`: The symbol/form at the 'call position' of the closest enclosing list. The user might be working with that particular function invokation. (Clojure only)
-* `current-ns`: The current namespace name and the form, corresponds to the `current-file-path` from the context metadata. The ns form itself contains requires and such. Apply your Clojure knowledge! (Clojure only)",
+                  :description prompts/get-context-description,
                   :parameters
                   {:type "object",
                    :properties
