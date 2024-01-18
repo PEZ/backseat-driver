@@ -112,35 +112,42 @@ Please don't refer to the context meta data directly. It makes for awkward conve
 
 (defn context-metadata []
   (let [editor vscode/window.activeTextEditor
-        metadata (cond-> {:description ""
-                          :current-time {:description "Use to e.g. keep track of how long it is between the user's messages. To formulate greetings, or whatever."
+        metadata-general {:current-time {:description "Use to e.g. keep track of how long it is between the user's messages. To formulate greetings, or whatever."
                                          :time (js/Date.)}
                           :current-file-path (meta-for-context-part (context/current-file) nil [:path])
                           :current-file-range (meta-for-context-part (context/current-file-content) "current-file-content" [])
                           :current-selection-range (meta-for-context-part (context/selection) "current-selection" [])}
-                   (= "clojure" (some-> editor .-document .-languageId))
-                   (merge
-                    {:current-ns (meta-for-context-part (context/current-ns) "current-ns" [:namespace :ns-form-size])
-                     :current-form-range (meta-for-context-part (context/current-form) "current-form" [])
-                     :current-enclosing-form-range (meta-for-context-part (context/current-enclosing-form) "current-enclosing-form" [])
-                     :current-function (meta-for-context-part (context/current-function) nil [:content])
-                     :current-top-level-form-range (meta-for-context-part (context/current-top-level-form) "current-top-level-form" [])
-                     :current-top-level-defines (meta-for-context-part (context/current-top-level-defines) nil [:content])}))]
-    (string/join "\n"
-                 ["--- START OF USER CONTEXT METADATA\n"
-                  "Metadata about the code context, such as
-the path to the users current file, the selection positions, the size of the file, the various forms and more. Note that there is a function you can call, named `get-context` that you can use to get the content of the various contexts. The metadata is meant to help you in deciding how to use it. The metadata either contains a `:context-part` entry, telling you which `context-part` parameter to give to `get-context`. Or it contains a `:content` entry, in which case there is no further content to fetch.
+        clojure? (= "clojure" (some-> editor .-document .-languageId))
+        metadata-clojure (when clojure?
+                           {:current-ns (meta-for-context-part (context/current-ns) "current-ns" [:namespace :ns-form-size])
+                            :current-form-range (meta-for-context-part (context/current-form) "current-form" [])
+                            :current-enclosing-form-range (meta-for-context-part (context/current-enclosing-form) "current-enclosing-form" [])
+                            :current-function (meta-for-context-part (context/current-function) nil [:content])
+                            :current-top-level-form-range (meta-for-context-part (context/current-top-level-form) "current-top-level-form" [])
+                            :current-top-level-defines (meta-for-context-part (context/current-top-level-defines) nil [:content])})
+       metadata-description "The metadata either contains information about the corresponding `get-context` `context-part`, or the `content` (in which case there is no more get-context to fetch)"
+        general-description (if clojure?
+                              "The current-file-range tells you how big the current file is. Same for the current-selection-range. The clojure file path corresponds with the namespace name."
+                              "The current-file-range tells you how big the current file is. Same for the current-selection-range.")
+        clojure-description "You get the namespace name, current function name, and current define name in full, for the other context-parts, you have metadata only and can decide to ask for the content."
+        metadata (cond-> {:general (assoc metadata-general :description general-description)}
+                   clojure? (assoc :clojure (assoc metadata-clojure :description clojure-description)))
+        metadata-lines ["--- START OF USER CONTEXT METADATA\n"
+                        "Metadata about the code context, such as
+the path to the users current file, the selection positions, the size of the file, the various forms and more. Note that there is a function you can call, named `get-context` that you can use to get the content of the various context parts (via the `context-part` parameter). The metadata is meant to help you in deciding how to use `get-context` and its context parts.
 
 Note that the user might mean some different things with something like 'this function'. It can be the current function being called (`current-function`), or it could be the current function being defined (`current-top-level-form-[range|defines]`) related.
 
 If you want to do math or such on the metadata consider using your code-interpreter (which does not understand Clojure, nb).
 
 Reminder: When the user says things like 'this', 'here', 'it', or genereally refers to something, it is probably the context being on their mind."
-                  ""
-                  "```edn"
-                  (pr-str {:context-metadata metadata})
-                  "```"
-                  "--- END OF USER CONTEXT METADATA\n"])))
+                        ""
+                        "```edn"
+                        (pr-str {:context-metadata metadata
+                                 :description metadata-description})
+                        "```"
+                        "--- END OF USER CONTEXT METADATA\n"]]
+    (string/join "\n" metadata-lines)))
 
 (def user-input-marker "--- INPUT FROM THE USER:")
 
