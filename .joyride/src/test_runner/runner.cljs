@@ -13,48 +13,55 @@
 (defmethod cljs.test/report [:cljs.test/default :end-test-var] [m]
   (write " ===\n"))
 
-(def old-pass (get-method cljs.test/report [:cljs.test/default :pass]))
+(def original-pass (get-method cljs.test/report [:cljs.test/default :pass]))
 
 (defmethod cljs.test/report [:cljs.test/default :pass] [m]
-  (binding [*print-fn* write] (old-pass m))
+  (binding [*print-fn* write] (original-pass m))
   (write "✅")
   (swap! db/!state update :pass inc))
 
-(def old-fail (get-method cljs.test/report [:cljs.test/default :fail]))
+(def original-fail (get-method cljs.test/report [:cljs.test/default :fail]))
 
 (defmethod cljs.test/report [:cljs.test/default :fail] [m]
-  (binding [*print-fn* write] (old-fail m))
+  (binding [*print-fn* write] (original-fail m))
   (write "❌")
   (swap! db/!state update :fail inc))
 
-(def old-error (get-method cljs.test/report [:cljs.test/default :fail]))
+(def original-error (get-method cljs.test/report [:cljs.test/default :fail]))
 
 (defmethod cljs.test/report [:cljs.test/default :error] [m]
-  (binding [*print-fn* write] (old-error m))
+  (binding [*print-fn* write] (original-error m))
   (write "🚫")
   (swap! db/!state update :error inc))
 
-(def old-end-run-tests (get-method cljs.test/report [:cljs.test/default :end-run-tests]))
+(def original-start-run-tests (get-method cljs.test/report [:cljs.test/default :start-run-tests]))
+
+(defmethod cljs.test/report [:cljs.test/default :start-run-tests] [m]
+  (binding [*print-fn* write] (original-error m))
+  (write "test-runner: Starting tests...")
+  (db/init-counters!))
+
+(def original-end-run-tests (get-method cljs.test/report [:cljs.test/default :end-run-tests]))
 
 (defmethod cljs.test/report [:cljs.test/default :end-run-tests] [m]
   (binding [*print-fn* write]
-    (old-end-run-tests m)
-    (let [{:keys [running pass fail error]} @db/!state
+    (original-end-run-tests m)
+    (let [{:keys [running pass fail error] :as state} @db/!state
           passed-minimum-threshold 2
           fail-reason (cond
                         (< 0 (+ fail error)) "test-runner: FAILURE: Some tests failed or errored"
-                        (< pass passed-minimum-threshold) (str "test-runner: FAILURE: Less than " passed-minimum-threshold " assertions passed")
+                        (< pass passed-minimum-threshold) (str "test-runner: FAILURE: Less than " passed-minimum-threshold " assertions passed. (Passing: " pass ")")
                         :else nil)]
-      (println "test-runner: tests run, results:" (select-keys  @db/!state [:pass :fail :error]))
+      (println "test-runner: tests run, results:" (select-keys state [:pass :fail :error]) "\n")
       (if fail-reason
         (p/reject! running fail-reason)
         (p/resolve! running true)))))
 
-(defn- run-tests-impl!+ [ns-syms]
+(defn- run-tests-impl!+ [test-nss]
   (try
-    (doseq [ns-sym ns-syms]
-      (require ns-sym :reload)
-      (cljs.test/run-tests ns-sym))
+    (doseq [test-ns test-nss]
+      (require test-ns :reload))
+    (apply cljs.test/run-tests test-nss)
     (catch :default e
       (p/reject! (:running @db/!state) e))))
 
@@ -62,27 +69,25 @@
   (println "test-runner: Workspace activated.")
   (swap! db/!state assoc :ws-activated? true))
 
-(defn run-ns-tests!+ [ns-syms]
+(defn run-ns-tests!+ [test-nss]
   (let [running (p/deferred)]
     (swap! db/!state assoc :running running)
     (if (:ws-activated? @db/!state)
-      (run-tests-impl!+ ns-syms)
+      (run-tests-impl!+ test-nss)
       (do
         (println "test-runner: Waiting for workspace to activate...")
         (add-watch db/!state :runner (fn [k r _o n]
                                        (when (:ws-activated? n)
                                          (remove-watch r k)
-                                         (run-tests-impl!+ ns-syms))))))
+                                         (run-tests-impl!+ test-nss))))))
     running))
 
 (comment
-  (run-ns-tests!+ ['test.backseat-driver.ui-test])
+  (run-ns-tests!+ ['test.backseat-driver.ui-test
+                   'test.backseat-driver.util-test])
   @db/!state
   (swap! db/!state assoc :ws-activated? false)
   (swap! db/!state assoc :ws-activated? true)
-  (add-watch db/!state :foo (fn [k r o n]
-                              (println "BOOM!"
-                               [k r o n])
-                              (remove-watch r k)))
+
   :rcf)
 
