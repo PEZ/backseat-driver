@@ -19,12 +19,12 @@
 
 (def context-part->function
   {"current-file-content" context/current-file-content
+   "current-selection" context/selection
    "current-namespace-form" context/current-ns
    "current-form" context/current-form
    "current-enclosing-form" context/current-enclosing-form
    "current-top-level-form" context/current-top-level-form
-   "current-top-level-defines" context/current-top-level-defines
-   "current-selection" context/selection})
+   "current-top-level-defines" context/current-top-level-defines})
 
 (def function-arguments
   {:get_context {:context-part (set (keys context-part->function))}})
