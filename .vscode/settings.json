@@ -1,0 +1,33 @@
+{
+  "calva.projectRootsSearchExclude": [
+    "bower_components",
+    ".bzr",
+    ".cache",
+    ".ccls-cache",
+    ".clangd",
+    ".classpath",
+    "*.code-search",
+    ".cpcache",
+    "_darcs",
+    ".DS_Store",
+    ".ensime_cache",
+    ".eunit",
+    "flow-typed",
+    "_FOSSIL_",
+    ".fslckout",
+    ".git",
+    ".hg",
+    ".idea",
+    ".joyride",
+    "node_modules",
+    ".pijul",
+    ".project",
+    ".shadow-cljs",
+    ".stack-work",
+    ".svn",
+    "target",
+    ".tox",
+    ".vscode",
+    ".vscode-test"
+  ]
+}
