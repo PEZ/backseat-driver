@@ -123,8 +123,8 @@
 
 (defn add-assist-button! []
   (let [item (vscode/window.createStatusBarItem assist-button-id
-                                                vscode/StatusBarAlignment.Right
-                                                10000)]
+                                                vscode/StatusBarAlignment.Left
+                                                -10000)]
     (set! (.-text item) "Backseat")
     (set! (.-command item)
           (clj->js {:command "joyride.runCode"
