@@ -37,7 +37,7 @@
   (write "❌")
   (swap! !state update :fail inc))
 
-(def original-error (get-method cljs.test/report [:cljs.test/default :fail]))
+(def original-error (get-method cljs.test/report [:cljs.test/default :error]))
 
 (defmethod cljs.test/report [:cljs.test/default :error] [m]
   (binding [*print-fn* write] (original-error m))
@@ -47,7 +47,7 @@
 (def original-start-run-tests (get-method cljs.test/report [:cljs.test/default :start-run-tests]))
 
 (defmethod cljs.test/report [:cljs.test/default :start-run-tests] [m]
-  (binding [*print-fn* write] (original-error m))
+  (binding [*print-fn* write] (original-start-run-tests m))
   (write "test-runner: Starting tests...")
   (init-counters!))
 
