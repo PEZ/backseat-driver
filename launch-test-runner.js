@@ -8,6 +8,7 @@ const {
 } = require("@vscode/test-electron");
 
 async function main(testWorkspace) {
+  console.log("launch-test-runner.js: testWorkspace", testWorkspace);
   try {
     const extensionTestsPath = path.resolve(__dirname, 'runTests');
     const vscodeExecutablePath = await downloadAndUnzipVSCode('insiders');
@@ -27,7 +28,7 @@ async function main(testWorkspace) {
       '--force',
     ];
 
-    console.log("launchArgs", launchArgs);
+    console.log("launch-test-runner.js: launchArgs", launchArgs);
     cp.spawnSync(cliPath, launchArgs, {
       encoding: "utf-8",
       stdio: "inherit",
@@ -40,14 +41,14 @@ async function main(testWorkspace) {
     };
     await runTests(runOptions)
       .then((_result) => {
-        console.info("Tests finished");
+        console.info("launch-test-runner.js: Tests finished");
       })
       .catch((err) => {
-        console.error("Tests finished:", err);
+        console.error("launch-test-runner.js: Tests finished:", err);
         process.exit(1);
       });
   } catch (err) {
-    console.error("Failed to run tests:", err);
+    console.error("launch-test-runner.js: Failed to run tests:", err);
     process.exit(1);
   }
 }
