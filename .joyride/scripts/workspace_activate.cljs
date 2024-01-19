@@ -15,7 +15,7 @@
 
 (defn- -main []
   (println "Hello World, from Backseat Driver demo workspace_activate.cljs script")
-  (if js/process.env.JOYRIDE_TEST_RUNNER_HEADLESS
+  (if js/process.env.JOYRIDE_HEADLESS
     (println "HEADLESS TEST RUN: Not Initializing Backseat Driver app.")
     (do
       (println "Initializing Backseat Driver app...")

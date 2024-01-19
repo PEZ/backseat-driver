@@ -1,15 +1,14 @@
 {
-  "name": "kurshowcrisp",
+  "name": "backseat-driver",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "The Hackable VS Code AI Assistant",
   "scripts": {
     "pretest": "npm i",
-    "test": "JOYRIDE_TEST_RUNNER_HEADLESS=1 node ./launch-test-runner.js"
+    "test": "JOYRIDE_HEADLESS=true node ./launch-test-runner.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "pez@pezius.com",
+  "license": "MIT",
   "dependencies": {
     "axios": "^1.5.1",
     "openai": "^4.24.3"

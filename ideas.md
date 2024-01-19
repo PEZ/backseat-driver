@@ -12,6 +12,7 @@
   * User info
   * User instructions
   * Annotated links from the user
+* Use git for context
 
 * Quick note-taking
   * Add notes to user context?
