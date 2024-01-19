@@ -53,6 +53,8 @@ async function main(testWorkspace) {
   }
 }
 
-const workspace = path.resolve(__dirname, ".", "test-workspace");
+const workspace = path.resolve(__dirname, ".");
+console.info(`launch-test-runner.js: Using Workspace: ${workspace}`);
+
 main(workspace);
 
