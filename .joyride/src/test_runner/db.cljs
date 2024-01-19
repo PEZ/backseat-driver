@@ -1,7 +1,7 @@
 (ns test-runner.db
   (:require [cljs.test]))
 
-(def default-db {:running nil
+(def default-db {:runner+ nil
                  :ws-activated? false
                  :pass 0
                  :fail 0

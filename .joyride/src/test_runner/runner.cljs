@@ -46,7 +46,7 @@
 (defmethod cljs.test/report [:cljs.test/default :end-run-tests] [m]
   (binding [*print-fn* write]
     (original-end-run-tests m)
-    (let [{:keys [running pass fail error] :as state} @db/!state
+    (let [{:keys [runner+ pass fail error] :as state} @db/!state
           passed-minimum-threshold 2
           fail-reason (cond
                         (< 0 (+ fail error)) "test-runner: FAILURE: Some tests failed or errored"
@@ -54,8 +54,8 @@
                         :else nil)]
       (println "test-runner: tests run, results:" (select-keys state [:pass :fail :error]) "\n")
       (if fail-reason
-        (p/reject! running fail-reason)
-        (p/resolve! running true)))))
+        (p/reject! runner+ fail-reason)
+        (p/resolve! runner+ true)))))
 
 (defn- run-tests-impl!+ [test-nss]
   (try
@@ -63,15 +63,15 @@
       (require test-ns :reload))
     (apply cljs.test/run-tests test-nss)
     (catch :default e
-      (p/reject! (:running @db/!state) e))))
+      (p/reject! (:runner+ @db/!state) e))))
 
 (defn workspace-activated! []
   (println "test-runner: Workspace activated.")
   (swap! db/!state assoc :ws-activated? true))
 
 (defn run-ns-tests!+ [test-nss]
-  (let [running (p/deferred)]
-    (swap! db/!state assoc :running running)
+  (let [runner+ (p/deferred)]
+    (swap! db/!state assoc :runner+ runner+)
     (if (:ws-activated? @db/!state)
       (run-tests-impl!+ test-nss)
       (do
@@ -80,7 +80,7 @@
                                        (when (:ws-activated? n)
                                          (remove-watch r k)
                                          (run-tests-impl!+ test-nss))))))
-    running))
+    runner+))
 
 (comment
   (run-ns-tests!+ ['test.backseat-driver.ui-test
