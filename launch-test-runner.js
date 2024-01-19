@@ -53,5 +53,8 @@ async function main(testWorkspace) {
   }
 }
 
+console.log("launch-test-runner.js: process.cwd()", process.cwd());
+console.log("launch-test-runner.js: __dirname", __dirname);
+
 main(".");
 
