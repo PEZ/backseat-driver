@@ -3,7 +3,7 @@
   (:require [cljs.test :refer [deftest is testing]]
             [backseat-driver.ui :as ui]))
 
-(deftest palette-items-test
+(deftest palette-items
   (testing "Active run menu"
     (is (= [:interrupt-polling! :show-channel!]
            (map :function (#'ui/palette-items {:thread-running? true})))

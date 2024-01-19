@@ -1,7 +1,4 @@
-(ns backseat-driver.util
-  (:require [promesa.core :as p]
-            [clojure.set :as set]
-            [backseat-driver.db :as db]))
+(ns backseat-driver.util)
 
 (defn ->clj [o] (js->clj o :keywordize-keys true))
 
@@ -25,6 +22,18 @@
                (throw e)))
      (.finally (fn []
                  (js/clearTimeout @!timeout))))))
+
+
+(comment
+  ;; I don't know how to test this properly, but it works where we are using it =)
+  (with-timeout+
+    (-> (js/Promise. (fn [resolve, _]
+                       (js/setTimeout #(do (println "Resolving promise") (resolve :made-it)) 3000)))
+        (.then (fn [v] (println "Our promise won with:" v)))
+        (.catch (fn [e] (println "ERROR! (the timeout promise won?)" e))))
+    100)
+  :rcf)
+
 
 (defn map-matches-spec? [m spec]
   (if (map? m)
@@ -52,18 +61,6 @@
                               :e {:f 5}}}})
   ;; => false
 
-  :rcf)
-
-(comment
-
-
-  ;; I don't know how to test this properly, but it works where we are using it =)
-  (with-timeout+
-    (-> (js/Promise. (fn [resolve, _]
-                       (js/setTimeout #(do (println "Resolving promise") (resolve :made-it)) 3000)))
-        (.then (fn [v] (println "Our promise won with:" v)))
-        (.catch (fn [e] (println "ERROR! (the timeout promise won?)" e))))
-    100)
   :rcf)
 
 

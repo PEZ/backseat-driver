@@ -18,3 +18,8 @@
 * [ ] We need much better prompting, guiding the AI how to use the functions
   * [ ] Make it ask for current file, when it hasn't seen it before
   
+
+## Joyride TODO
+
+* [ ] Implement `abs`
+* [ ] Upgrade SCI
