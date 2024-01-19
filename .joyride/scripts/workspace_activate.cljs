@@ -22,7 +22,7 @@
       (println "Initializing Backseat Driver app...")
       (require '[backseat-driver.app])
       ((resolve 'backseat-driver.app/init!))))
-  (test-runner.runner/workspace-activated!))
+  (test-runner.runner/ready-to-run-tests! "Workspace activated."))
 
 (when (= (joyride/invoked-script) joyride/*file*)
   (-main))

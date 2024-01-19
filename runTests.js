@@ -8,6 +8,6 @@ exports.run = async () => {
     'joyride.runCode',
     `(require '[test-runner.runner :as runner])
      (require '[test.config :as config])
-     (runner/run-ns-tests!+ config/namespaces)`
+     (runner/run-ns-tests!+ config/namespaces "Waiting for workspace to activate...")`
   );
 };

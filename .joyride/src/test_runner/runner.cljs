@@ -4,7 +4,7 @@
             [promesa.core :as p]))
 
 (def ^:private default-db {:runner+ nil
-                           :ws-activated? false
+                           :ready-to-run? false
                            :pass 0
                            :fail 0
                            :error 0})
@@ -75,29 +75,37 @@
     (catch :default e
       (p/reject! (:runner+ @!state) e))))
 
-(defn workspace-activated! []
-  (println "test-runner: Workspace activated.")
-  (swap! !state assoc :ws-activated? true))
+(defn ready-to-run-tests!
+  "The test runner will wait for this to be called before running any tests.
+   `ready-message` will be logged when this is called"
+  [ready-message]
+  (println "test-runner:" ready-message)
+  (swap! !state assoc :ready-to-run? true))
 
-(defn run-ns-tests!+ [test-nss]
+(defn run-ns-tests!+
+  "Runs the `test-nss` test
+   NB: Will wait for `ready-to-run-tests!` to be called before doing so.
+   `waiting-message` will be logged if the test runner is waiting."
+  [test-nss waiting-message]
   (let [runner+ (p/deferred)]
     (swap! !state assoc :runner+ runner+)
-    (if (:ws-activated? @!state)
+    (if (:ready-to-run? @!state)
       (run-tests-impl!+ test-nss)
       (do
-        (println "test-runner: Waiting for workspace to activate...")
+        (println "test-runner: " waiting-message)
         (add-watch !state :runner (fn [k r _o n]
-                                       (when (:ws-activated? n)
+                                       (when (:ready-to-run? n)
                                          (remove-watch r k)
                                          (run-tests-impl!+ test-nss))))))
     runner+))
 
 (comment
   (run-ns-tests!+ ['test.backseat-driver.ui-test
-                   'test.backseat-driver.util-test])
+                   'test.backseat-driver.util-test]
+                  "Something good")
   @!state
-  (swap! !state assoc :ws-activated? false)
-  (swap! !state assoc :ws-activated? true)
+  (swap! !state assoc :ready-to-run? false)
+  (swap! !state assoc :ready-to-run? true)
 
   :rcf)
 
