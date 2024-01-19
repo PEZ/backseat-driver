@@ -27,7 +27,7 @@ jobs:
     - name: Debug print current directory
       run: |
         pwd
-        tree
+        tree -a
     - name: Run tests
       uses: coactions/setup-xvfb@v1
       with:
