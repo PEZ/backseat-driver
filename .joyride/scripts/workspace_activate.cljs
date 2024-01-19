@@ -13,8 +13,10 @@
 ;; to use it in your projects, see README.md for how to install
 ;; it as a User script.
 
+(println "Backseat Driver: Hello World, from workspace_activate.cljs script")
+
 (defn- -main []
-  (println "Hello World, from Backseat Driver demo workspace_activate.cljs script")
+  (println "Backseat Driver: -main called")
   (if js/process.env.JOYRIDE_HEADLESS
     (println "HEADLESS TEST RUN: Not Initializing Backseat Driver app.")
     (do
@@ -22,5 +24,5 @@
       (backseat-driver.app/init!)))
   (test-runner.runner/workspace-activated!))
 
-(when true #_(= (joyride/invoked-script) joyride/*file*)
+(when (= (joyride/invoked-script) joyride/*file*)
   (-main))
