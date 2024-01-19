@@ -22,5 +22,5 @@
       (backseat-driver.app/init!)))
   (test-runner.runner/workspace-activated!))
 
-(when (= (joyride/invoked-script) joyride/*file*)
+(when true #_(= (joyride/invoked-script) joyride/*file*)
   (-main))
