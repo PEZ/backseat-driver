@@ -182,7 +182,7 @@
                                                     (js/setTimeout
                                                      #(retriever (inc tries))
                                                      poll-interval))
-                                   run-js (-> (util/with-timeout+
+                                   run-js (-> (p/timeout
                                                 (openai-api/openai.beta.threads.runs.retrieve
                                                  thread-id
                                                  run-id)

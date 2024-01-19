@@ -8,33 +8,6 @@
        (sort-by f)
        vec))
 
-(defn with-timeout+ [promise+ ms]
-  (let [!timeout (atom nil)
-        timeout-promise+ (js/Promise. (fn [_ reject]
-                                        (let [timeout (js/setTimeout
-                                                       (fn []
-                                                         (reject [:timeout ms]))
-                                                       ms)]
-                                          (reset! !timeout timeout))))]
-    (->
-     (js/Promise.race [promise+ timeout-promise+])
-     (.catch (fn [e]
-               (throw e)))
-     (.finally (fn []
-                 (js/clearTimeout @!timeout))))))
-
-
-(comment
-  ;; I don't know how to test this properly, but it works where we are using it =)
-  (with-timeout+
-    (-> (js/Promise. (fn [resolve, _]
-                       (js/setTimeout #(do (println "Resolving promise") (resolve :made-it)) 3000)))
-        (.then (fn [v] (println "Our promise won with:" v)))
-        (.catch (fn [e] (println "ERROR! (the timeout promise won?)" e))))
-    100)
-  :rcf)
-
-
 (defn map-matches-spec? [m spec]
   (if (map? m)
     (every? (fn [[k v]]
@@ -49,17 +22,17 @@
     (= m spec)))
 
 (comment
-  (map-matches-spec? {:get_context {:context-part "current-ns"}}
-                     {:get_context {:context-part #{"current-form" "current-ns"}}})
-  ;; => true
-  (map-matches-spec? {:a {:b {:c {:d 9}}}}
-                     {:a {:b {:c {:d 9}
-                              :e {:f 5}}}})
-  ;; => true
-  (map-matches-spec? {:a {:b {:c {:d 2}}}}
-                     {:a {:b {:c {:d #{1 3}}
-                              :e {:f 5}}}})
-  ;; => false
+  (->vec-sort-vals-by {:a 7 :d 1 :e 0 :b 3} identity)
+  ;; => [0 1 3 7]
+
+  (->vec-sort-vals-by {:a "aaaaa" :d "d" :e "" :b "bbb"} identity)
+  ;; => ["" "aaaaa" "bbb" "d"]
+
+  (->vec-sort-vals-by {:a "aaaaa" :d "d" :e "" :b "bbb"} count)
+  ;; => ["" "d" "bbb" "aaaaa"]
+
+  (count "aaa")
+  (count [1 2 4])
 
   :rcf)
 
