@@ -20,26 +20,26 @@
 
 (defn current-form []
   (assoc (range-response->clj (calva/ranges.currentForm))
-         :bd-client-note "The Current Form in the Calva sense."))
+         :description "The Current Form in the Calva sense."))
 
 (defn current-enclosing-form []
   (assoc (range-response->clj (calva/ranges.currentEnclosingForm))
-         :bd-client-note "The current enclosing form is the list/etc that the user is typing into.
+         :description "The current enclosing form is the list/etc that the user is typing into.
 Together with the current selection, this can help you figure out what
 the user is up to."))
 
 (defn current-function []
   (assoc (range-response->clj (calva/ranges.currentFunction))
-         :bd-client-note "The symbol at call postion of the closest enclosing list. So, the
+         :description "The symbol at call postion of the closest enclosing list. So, the
 function call the user is crafting."))
 
 (defn current-top-level-defines []
   (assoc (range-response->clj (calva/ranges.currentTopLevelDef))
-         :bd-client-note "Typically the name of the function or variable being defined."))
+         :description "Typically the name of the function or variable being defined."))
 
 (defn current-top-level-form []
   (assoc (range-response->clj (calva/ranges.currentTopLevelForm))
-         :bd-client-note "The current top level form is typically the current function or
+         :description "The current top level form is typically the current function or
 variable definition. If it doesn't look like a definition, it could
 be some testing code, often inside a rich comment form."))
 
@@ -47,11 +47,11 @@ be some testing code, often inside a rich comment form."))
   (let [document vscode/window.activeTextEditor.document]
     {:range (range->offsets vscode/window.activeTextEditor.selection)
      :content (-> document (.getText vscode/window.activeTextEditor.selection))
-     :bd-client-note "When the start and end of the range are the same, there is only a
+     :description "When the start and end of the range are the same, there is only a
 cursor postion and no selection. When there is a selection, it could signify that the
 user wants your attention on it."}))
 
-(def max-file-size 20000)
+(def max-file-size 10000)
 
 (defn current-file-content []
   (let [text (-> vscode/window.activeTextEditor.document .getText)
@@ -61,7 +61,7 @@ user wants your attention on it."}))
        :content text}
       {:range [0 size]
        :content (subs text 0 max-file-size)
-       :bd-client-note "The content is truncated to the max file size of 200000 characters."})))
+       :description "The content is truncated to the max file size of 200000 characters."})))
 
 (defn selection-and-current-forms [include-file-content?]
   (let [{selection-range :range selection-content :content} (selection)
@@ -77,7 +77,7 @@ user wants your attention on it."}))
 
 (defn current-ns []
   (let [[namespace ns-form] (calva/document.getNamespaceAndNsForm)]
-    {:bd-client-note "Apply your knowledge about Clojure namespaces, how they correspond to file paths, etcetera."
+    {:description "Apply your knowledge about Clojure namespaces, how they correspond to file paths, etcetera."
      :namespace namespace
      :ns-form-size (count ns-form)
      :ns-form ns-form}))

@@ -19,7 +19,7 @@
 
 (def context-part->function
   {"current-file-content" context/current-file-content
-   "current-ns" context/current-ns
+   "current-namespace-form" context/current-ns
    "current-form" context/current-form
    "current-enclosing-form" context/current-enclosing-form
    "current-top-level-form" context/current-top-level-form
@@ -67,7 +67,7 @@
   ;; => "asst_hoDaLXFpudx5qynGkoTDraAU"
 
   ;; Tread carefully!
-  #_(.update (-> (joyri<de/extension-context) .-globalState) "backseat-driver-assistant-id" js/undefined)
+  #_ (.update (-> (joyride/extension-context) .-globalState) "backseat-driver-assistant-id" js/undefined)
   :rcf)
 
 (defn call-info->tool-output [call-info]
@@ -114,9 +114,6 @@
 (comment
   (js/JSON.parse "{\"get_context\":\"current-top-level-form\"}")
   (pr-str (js/JSON.stringify (clj->js {:get_context "current-top-level-form"})))
-  (util/valid-shallow-map? {:get_context "current-top-level-form"} function-arguments)
-  (util/valid-shallow-map? {:get_context "current-"} function-arguments)
-  (util/valid-shallow-map? {:gpt-hallucinates "current-form"} function-arguments)
   :rcf)
 
 (defn type-function? [call]
@@ -238,19 +235,14 @@
 
 (defn- call-assistance!+ [assistant thread input]
   (-> (p/let
-       [include-file-content? (threads/maybe-add-shared-file!?+ thread (:path (context/current-file)))
-        augmented-input (prompts/augmented-user-input input)
+       [augmented-input (prompts/augmented-user-input input)
         _message (openai-api/openai.beta.threads.messages.create (.-id thread)
                                                                  (clj->js {:role "user"
                                                                            :content augmented-input}))
         run (openai-api/openai.beta.threads.runs.create
              (.-id thread)
              (clj->js {:assistant_id (.-id assistant)
-                       :model gpt4
-                       :tools (into [{:type "code_interpreter"}
-                                     #_{:type "retrieval"}]
-                                    functions-conf)
-                       :instructions prompts/system-instructions}))]
+                       :model gpt4}))]
         (retrieve-poller+ (.-id thread) (.-id run)))
       (p/catch (fn [[thread-id run-id status :as poll-info]]
                  (report-status! status)
