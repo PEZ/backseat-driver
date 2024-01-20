@@ -9,8 +9,7 @@
             [backseat-driver.ui :as ui]
             [backseat-driver.util :as util]
             [joyride.core :as joyride]
-            [promesa.core :as p]
-            [clojure.string :as string]))
+            [promesa.core :as p]))
 
 (def ^:private gpt4 "gpt-4-1106-preview")
 (def ^:private gpt3 "gpt-3.5-turbo-1106")
@@ -261,18 +260,18 @@
 (defn advice!+ []
   (swap! db/!db assoc :interrupted? false)
   (-> (p/let [assistant (:assistant+ @db/!db)
-              thread (:thread+ @db/!db)
+              thread (:current-thread @db/!db)
               input (vscode/window.showInputBox
                      #js {:prompt "What do you want say to the assistant?"
                           :placeHolder "Something something"
                           :ignoreFocusOut true})]
         (when-not (= js/undefined input)
           (p/let [_ (ui/user-says! input)
-                  _ (threads/maybe-add-title!?+ thread input)
+                  _ (threads/save-thread-data!+ db/!db thread input)
                   messages (call-assistance!+ assistant thread input)
-                  last-created-at (some-> @db/!db :last-message :created_at)
+                  last-created-at (some-> @db/!db :messages first :created_at)
                   new-messages (new-assistant-messages messages last-created-at)
-                  _ (swap! db/!db assoc :last-message (first messages))
+                  _ (swap! db/!db assoc :messages messages)
                   message-texts (map threads/message-text new-messages)]
             (ui/assistant-says! message-texts)
             :advice-given+)))

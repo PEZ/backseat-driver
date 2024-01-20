@@ -59,13 +59,15 @@
     (let [{:keys [runner+ pass fail error] :as state} @!state
           passed-minimum-threshold 2
           fail-reason (cond
-                        (< 0 (+ fail error)) "test-runner: FAILURE: Some tests failed or errored"
-                        (< pass passed-minimum-threshold) (str "test-runner: FAILURE: Less than " passed-minimum-threshold " assertions passed. (Passing: " pass ")")
+                        (< 0 (+ fail error)) "test-runner: 👎 FAILURE: Some tests failed or errored"
+                        (< pass passed-minimum-threshold) (str "test-runner: 👎 FAILURE: Less than " passed-minimum-threshold " assertions passed. (Passing: " pass ")")
                         :else nil)]
-      (println "test-runner: tests run, results:" (select-keys state [:pass :fail :error]) "\n")
-      (if fail-reason
-        (p/reject! runner+ fail-reason)
-        (p/resolve! runner+ true)))))
+      (println "test-runner: tests run, results:"
+               (select-keys state [:pass :fail :error]) "\n")
+      (when runner+ ; When not using the runner, there's no promise to resolve or reject
+        (if fail-reason
+          (p/reject! runner+ fail-reason)
+          (p/resolve! runner+ true))))))
 
 (defn- run-tests-impl!+ [test-nss]
   (try

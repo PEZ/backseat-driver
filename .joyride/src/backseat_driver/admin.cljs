@@ -39,14 +39,23 @@
         (js/setTimeout #(purge-threads-with-ids! (rest ids)) 100)))
     (println "Done")))
 
-(defn purge-threads! [limit]
+(defn fetch-thread-ids+ [limit]
   (let [url "https://api.openai.com/v1/threads"
         params #js {"limit" limit}]
     (p/let [resp (axios/get url #js {:headers headers :params params})
-            resp-clj (js->clj resp :keywordize-keys true)
-            ids (drop 10 (map #(:id %) (:data (:data resp-clj))))]
-      (println "Purge started:" (count ids) "threads to delete\n")
-      (purge-threads-with-ids! ids))))
+            resp-clj (js->clj resp :keywordize-keys true)]
+      (map #(:id %) (:data (:data resp-clj))))))
+
+(comment
+  (p/let [t-ids (fetch-thread-ids+ 50)]
+    (def t-ids (vec t-ids))
+    (println (count t-ids)))
+  :rcf)
+
+(defn purge-threads! [limit]
+  (p/let [ids (fetch-thread-ids+ limit)]
+    (println "Purge started:" (count ids) "threads to delete\n")
+    (purge-threads-with-ids! ids)))
 
 (comment
   (purge-threads! 10)

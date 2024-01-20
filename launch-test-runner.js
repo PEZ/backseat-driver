@@ -41,10 +41,10 @@ async function main(testWorkspace) {
     };
     await runTests(runOptions)
       .then((_result) => {
-        console.info("launch-test-runner.js: Tests finished");
+        console.info("launch-test-runner.js: 👍 Tests finished successfully");
       })
       .catch((err) => {
-        console.error("launch-test-runner.js: Tests finished:", err);
+        console.error("launch-test-runner.js: 👎 Tests finished with failures or errors:", err);
         process.exit(1);
       });
   } catch (err) {

@@ -2,8 +2,10 @@
 
 (def ^:private default-db {:disposables []
                            :assistant+ nil
-                           :thread+ nil
-                           :last-message nil
+                           :current-thread nil
+                           :threads {}
+                           :current-time-fn #(-> (js/Date.) .getTime (/ 1000))
+                           :messages nil
                            :channel nil
                            :thread-running? false
                            :interrupted? false
@@ -12,5 +14,11 @@
 
 (defonce !db (atom nil))
 
-(defn init-db! []
+(defn init! []
   (reset! !db default-db))
+
+(comment
+  @!db
+  ((:current-time-fn @!db))
+  :rcf)
+

@@ -1,6 +1,6 @@
 #_{:clj-kondo/ignore [:private-call]}
 (ns test.backseat-driver.ui-test
-  (:require [cljs.test :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is testing]]
             [backseat-driver.ui :as ui]))
 
 (deftest palette-items
@@ -10,6 +10,6 @@
         "shows active run menu correct(!) content in correct order")))
 
 (comment
-  (cljs.test/run-tests)
+  (clojure.test/run-tests)
   ; (ns-unmap *ns* 'palette-items)
   :rcf)

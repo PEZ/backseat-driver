@@ -29,5 +29,13 @@
     ".tox",
     ".vscode",
     ".vscode-test"
+  ],
+  "calva.customREPLCommandSnippets": [
+    {
+      "name": "Run all Backseat Driver tests",
+      "key": "t",
+      "repl": "cljs",
+      "snippet": "(require 'clojure.test) (clojure.test/run-all-tests #\"test[.].*backseat-driver[.].*\")"
+    },
   ]
 }

@@ -27,30 +27,24 @@
       .-subscriptions
       (.push disposable)))
 
-(defn- new-thread!+ []
-  (p/let [thread (openai-api/openai.beta.threads.create)]
-    (swap! db/!db assoc :last-message nil)
-    (swap! db/!db assoc :thread+ thread)
-    (threads/save-thread!+ thread nil nil)))
-
 (defn new-session! []
-  (new-thread!+)
+  (threads/create-thread!+ db/!db)
   (let [channel (:channel @db/!db)]
     (-> channel .clear)))
 
 (defn init! []
-  (clear-disposables!)
-  (db/init-db!)
-  (swap! db/!db assoc :assistant+ (assistants/get-or-create-assistant!+))
-  (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")]
-    (push-disposable channel)
-    (swap! db/!db assoc :channel channel)
-    (.show channel true))
-  (if-let [latest-thread (some-> (threads/retrieve-saved-threads-sorted)
-                                 last)]
-    (threads/render-thread!+ (:thread-id latest-thread))
-    (new-thread!+))
-  (push-disposable (ui/add-assist-button!)))
+  (p/do!
+   (clear-disposables!)
+   (db/init!)
+   (swap! db/!db assoc :assistant+ (assistants/get-or-create-assistant!+))
+   (let [channel (vscode/window.createOutputChannel "Backseat Driver" "markdown")]
+     (push-disposable channel)
+     (swap! db/!db assoc :channel channel)
+     (.show channel true))
+   (threads/init!+ db/!db threads/persistance-key)
+   (threads/render-thread! (:messages @db/!db))
+   ; create-thread
+   (push-disposable (ui/add-assist-button!))))
 
 (defn please-advice! []
   (assistants/advice!+))
