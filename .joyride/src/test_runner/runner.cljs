@@ -129,14 +129,14 @@
                   (run-fn uri reason nil))
                  ([uri reason waiting-message]
                   (println reason (vscode/workspace.asRelativePath uri))
-                   (println "Running tests...")
-                   (-> (run-tests!+ waiting-message)
-                       (p/then (fn [_]
-                                 (println "YAY!")))
-                       (p/catch (fn [e]
-                                  (println "NAY!" e)))
-                       (p/finally (fn []
-                                    (println "Waiting for changes..."))))))]
+                  (println "Running tests...")
+                  (-> (run-tests!+ waiting-message)
+                      (p/then (fn [_]
+                                (println "🟢 YAY! 🟢")))
+                      (p/catch (fn [e]
+                                 (println "🔴 NAY! 🔴" e)))
+                      (p/finally (fn []
+                                   (println "Waiting for changes..."))))))]
     (run-fn "." "Watcher started" waiting-message)
     (.onDidChange watcher (fn [uri]
                             (run-fn uri "File changed:")))
@@ -144,5 +144,5 @@
                             (run-fn uri "File created:")))
     (.onDidDelete watcher (fn [uri]
                             (run-fn uri "File deleted:"))))
-  (p/deferred) ; We leave the vscode electron test runner waiting for this one
-  )
+  ; We leave the vscode electron test runner waiting for this promise
+  (p/deferred))
