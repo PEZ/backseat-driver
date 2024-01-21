@@ -5,7 +5,7 @@
   "scripts": {
     "pretest": "npm i",
     "test": "JOYRIDE_HEADLESS=true node ./launch-test-runner.js",
-    "watch-test": "JOYRIDE_HEADLESS=true node ./launch-test-runner.js --watch"
+    "watch-test": "JOYRIDE_HEADLESS=true node .joyride/src/test_runner/launch-test-runner.js --watch"
   },
   "keywords": [],
   "author": "pez@pezius.com",

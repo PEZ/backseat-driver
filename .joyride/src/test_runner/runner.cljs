@@ -121,30 +121,34 @@
     (println "test-runner: Running tests in these" (count nss) "namespaces" (pr-str nss))
     (run-ns-tests!+ nss waiting-message)))
 
+(defn watcher-test-run!+
+   ([uri reason]
+    (watcher-test-run!+ uri reason nil))
+   ([uri reason waiting-message]
+    (println reason (vscode/workspace.asRelativePath uri))
+    (println "Running tests...")
+    (-> (run-tests!+ waiting-message)
+        (p/then (fn [_]
+                  (js/setImmediate
+                   #(println "🟢 YAY! 🟢"))))
+        (p/catch (fn [e]
+                   (js/setImmediate
+                    #(do (println "\u0007") ; No sound? Check your settings for
+                                            ; terminal.integrated.enableBell
+                         (println "🔴 NAY! 🔴" e)))))
+        (p/finally (fn []
+                     (js/setImmediate
+                      #(println "Waiting for changes...")))))))
+
 (defn watch!+ [waiting-message]
   (let [glob-pattern "**/.joyride/**/*.cljs"
-        watcher (vscode/workspace.createFileSystemWatcher glob-pattern)
-        run-fn (fn run-fn
-                 ([uri reason]
-                  (run-fn uri reason nil))
-                 ([uri reason waiting-message]
-                  (println reason (vscode/workspace.asRelativePath uri))
-                  (println "Running tests...")
-                  (-> (run-tests!+ waiting-message)
-                      (p/then (fn [_]
-                                (println "🟢 YAY! 🟢")))
-                      (p/catch (fn [e]
-                                 (println "\u0007") ; No sound? Check your settings for
-                                                    ; terminal.integrated.enableBell
-                                 (println "🔴 NAY! 🔴" e)))
-                      (p/finally (fn []
-                                   (println "Waiting for changes..."))))))]
-    (run-fn "." "Watcher started" waiting-message)
+        watcher (vscode/workspace.createFileSystemWatcher glob-pattern)]
     (.onDidChange watcher (fn [uri]
-                            (run-fn uri "File changed:")))
+                            (watcher-test-run!+ uri "File changed:")))
     (.onDidCreate watcher (fn [uri]
-                            (run-fn uri "File created:")))
+                            (watcher-test-run!+ uri "File created:")))
     (.onDidDelete watcher (fn [uri]
-                            (run-fn uri "File deleted:"))))
+                            (watcher-test-run!+ uri "File deleted:")))
+    (watcher-test-run!+ "." "Watcher started" waiting-message))
   ; We leave the vscode electron test runner waiting for this promise
   (p/deferred))

@@ -53,10 +53,11 @@ async function main(testWorkspace, isWatchMode) {
   }
 }
 
-const workspace = path.resolve(__dirname, ".");
+const workspace = path.resolve(__dirname, "../../..");
 console.info(`launch-test-runner.js: Using Workspace: ${workspace}`);
 
 const args = process.argv.slice(2);
 const isWatchMode = args.length > 0 && args[0] === "--watch";
+
 main(workspace, isWatchMode);
 
