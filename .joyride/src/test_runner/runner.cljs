@@ -134,6 +134,8 @@
                       (p/then (fn [_]
                                 (println "🟢 YAY! 🟢")))
                       (p/catch (fn [e]
+                                 (println "\u0007") ; No sound? Check your settings for
+                                                    ; terminal.integrated.enableBell
                                  (println "🔴 NAY! 🔴" e)))
                       (p/finally (fn []
                                    (println "Waiting for changes..."))))))]
