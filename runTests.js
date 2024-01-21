@@ -7,7 +7,6 @@ exports.run = async () => {
   return vscode.commands.executeCommand(
     'joyride.runCode',
     `(require '[test-runner.runner :as runner])
-     (require '[test.config :as config])
-     (runner/run-ns-tests!+ config/namespaces "Waiting for workspace to activate...")`
+     (runner/run-tests!+ "Waiting for workspace to activate...")`
   );
 };

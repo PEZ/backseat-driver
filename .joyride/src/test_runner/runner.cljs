@@ -1,5 +1,7 @@
 (ns test-runner.runner
-  (:require [clojure.string :as string]
+  (:require ["vscode" :as vscode]
+            ["path" :as path]
+            [clojure.string :as string]
             [cljs.test]
             [promesa.core :as p]))
 
@@ -101,13 +103,28 @@
                                          (run-tests-impl!+ test-nss))))))
     runner+))
 
-(comment
-  (run-ns-tests!+ ['test.backseat-driver.ui-test
-                   'test.backseat-driver.util-test]
-                  "Something good")
-  @!state
-  (swap! !state assoc :ready-to-run? false)
-  (swap! !state assoc :ready-to-run? true)
+(defn- uri->ns-symbol [uri]
+  (-> uri
+      (vscode/workspace.asRelativePath)
+      (string/split path/sep)
+      (->> (drop 2)
+           (string/join "."))
+      (string/replace "_" "-")
+      (string/replace #"\.clj[cs]$" "")
+      symbol))
 
-  :rcf)
+(defn- glob->ns-symbols [glob]
+  (p/let [uris (vscode/workspace.findFiles glob)]
+    (def uris uris)
+    (map uri->ns-symbol uris)))
+
+(defn run-tests!+
+  "Runs the tests in any `_test.cljs` files in `.joyride/src/test/`
+   NB: Will wait for `ready-to-run-tests!` to be called before doing so.
+  `waiting-message` will be logged if the test runner is waiting."
+  [waiting-message]
+  (p/let [nss (glob->ns-symbols ".joyride/src/test/**/*_test.cljs")]
+    (println "test-runner: Running tests in these" (count nss) "namespaces" (pr-str nss))
+    (run-ns-tests!+ nss waiting-message)))
+
 
