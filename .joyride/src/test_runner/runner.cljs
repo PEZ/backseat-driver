@@ -127,6 +127,8 @@
    ([uri reason waiting-message]
     (println reason (vscode/workspace.asRelativePath uri))
     (println "Running tests...")
+    (when-not (= "." uri)
+      (require (uri->ns-symbol uri) :reload-all))
     (-> (run-tests!+ waiting-message)
         (p/then (fn [_]
                   (js/setImmediate
