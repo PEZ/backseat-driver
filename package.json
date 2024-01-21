@@ -4,7 +4,8 @@
   "description": "The Hackable VS Code AI Assistant",
   "scripts": {
     "pretest": "npm i",
-    "test": "JOYRIDE_HEADLESS=true node ./launch-test-runner.js"
+    "test": "JOYRIDE_HEADLESS=true node ./launch-test-runner.js",
+    "watch-test": "JOYRIDE_HEADLESS=true node ./launch-test-runner.js --watch"
   },
   "keywords": [],
   "author": "pez@pezius.com",

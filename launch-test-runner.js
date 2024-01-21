@@ -7,10 +7,10 @@ const {
   runTests,
 } = require("@vscode/test-electron");
 
-async function main(testWorkspace) {
+async function main(testWorkspace, isWatchMode) {
   console.log("launch-test-runner.js: testWorkspace", testWorkspace);
   try {
-    const extensionTestsPath = path.resolve(__dirname, 'runTests');
+    const extensionTestsPath = path.resolve(__dirname, isWatchMode ? 'watchTests' : 'runTests');
     const vscodeExecutablePath = await downloadAndUnzipVSCode('insiders');
     const [cliPath, ...args] =
       resolveCliArgsFromVSCodeExecutablePath(vscodeExecutablePath);
@@ -56,5 +56,7 @@ async function main(testWorkspace) {
 const workspace = path.resolve(__dirname, ".");
 console.info(`launch-test-runner.js: Using Workspace: ${workspace}`);
 
-main(workspace);
+const args = process.argv.slice(2);
+const isWatchMode = args.length > 0 && args[0] === "--watch";
+main(workspace, isWatchMode);
 

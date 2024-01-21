@@ -9,7 +9,7 @@
 
 ;; The app is intended to be a global (User) script.
 ;; Try it out as a workspace script first, and if you want
-;; to use it in your projects, see README.md for how to install
+;; to use it in your projects,s see README.md for how to install
 ;; it as a User script.
 
 (println "Backseat Driver: Hello World, from workspace_activate.cljs script")

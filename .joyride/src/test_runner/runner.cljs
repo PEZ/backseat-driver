@@ -46,13 +46,6 @@
   (write "🚫")
   (swap! !state update :error inc))
 
-(def original-start-run-tests (get-method cljs.test/report [:cljs.test/default :start-run-tests]))
-
-(defmethod cljs.test/report [:cljs.test/default :start-run-tests] [m]
-  (binding [*print-fn* write] (original-start-run-tests m))
-  (write "test-runner: Starting tests...")
-  (init-counters!))
-
 (def original-end-run-tests (get-method cljs.test/report [:cljs.test/default :end-run-tests]))
 
 (defmethod cljs.test/report [:cljs.test/default :end-run-tests] [m]
@@ -72,6 +65,8 @@
           (p/resolve! runner+ true))))))
 
 (defn- run-tests-impl!+ [test-nss]
+  (write "test-runner: Starting tests...")
+  (init-counters!)
   (try
     (doseq [test-ns test-nss]
       (require test-ns :reload))
@@ -115,7 +110,6 @@
 
 (defn- glob->ns-symbols [glob]
   (p/let [uris (vscode/workspace.findFiles glob)]
-    (def uris uris)
     (map uri->ns-symbol uris)))
 
 (defn run-tests!+
@@ -123,8 +117,31 @@
    NB: Will wait for `ready-to-run-tests!` to be called before doing so.
   `waiting-message` will be logged if the test runner is waiting."
   [waiting-message]
-  (p/let [nss (glob->ns-symbols ".joyride/src/test/**/*_test.cljs")]
+  (p/let [nss (glob->ns-symbols ".joyride/src/test/**/*_test.clj[sc]")]
     (println "test-runner: Running tests in these" (count nss) "namespaces" (pr-str nss))
     (run-ns-tests!+ nss waiting-message)))
 
-
+(defn watch!+ [waiting-message]
+  (let [glob-pattern "**/.joyride/**/*.cljs"
+        watcher (vscode/workspace.createFileSystemWatcher glob-pattern)
+        run-fn (fn run-fn
+                 ([uri reason]
+                  (run-fn uri reason nil))
+                 ([uri reason waiting-message]
+                  (println reason (vscode/workspace.asRelativePath uri))
+                   (println "Running tests...")
+                   (p/-> (run-tests!+ waiting-message)
+                         (p/then (fn [_]
+                                   (println "YAY!")))
+                         (p/catch (fn [e]
+                                    (println "NAY!" e)))
+                         (p/finally (fn []
+                                      (println "Waiting for changes..."))))))]
+    (run-fn "." "Watcher started" waiting-message)
+    (.onDidChange watcher (fn [uri]
+                            (run-fn uri "File changed:")))
+    (.onDidCreate watcher (fn [uri]
+                            (run-fn uri "File created:")))
+    (.onDidDelete watcher (fn [uri]
+                            (run-fn uri "File deleted:"))))
+  (p/deferred))
