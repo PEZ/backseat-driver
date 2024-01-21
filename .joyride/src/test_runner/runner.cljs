@@ -65,7 +65,7 @@
           (p/resolve! runner+ true))))))
 
 (defn- run-tests-impl!+ [test-nss]
-  (write "test-runner: Starting tests...")
+  (println "test-runner: Starting tests...")
   (init-counters!)
   (try
     (doseq [test-ns test-nss]
