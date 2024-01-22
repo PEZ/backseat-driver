@@ -234,7 +234,9 @@
 
 (defn- call-assistance!+ [assistant thread input]
   (-> (p/let
-       [augmented-input (prompts/augmented-user-input input)
+       [augmented-input (prompts/augmented-user-input
+                         input
+                         (some-> vscode/window.activeTextEditor .-document))
         _message (openai-api/openai.beta.threads.messages.create (.-id thread)
                                                                  (clj->js {:role "user"
                                                                            :content augmented-input}))

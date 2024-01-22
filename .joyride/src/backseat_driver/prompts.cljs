@@ -60,41 +60,62 @@ Backseat Driver is like a pair programmer to the user, eager to see what user se
   (cond-> (select-keys part (into more-keys [:range :size]))
     get_context-param (assoc :context-part get_context-param)))
 
-(defn context-metadata []
-  (let [editor vscode/window.activeTextEditor
-        clojure? (= "clojure" (some-> editor .-document .-languageId))
+(defn- meta-from-document [document]
+  (let [clojure? (= "clojure" (.-languageId document))
         metadata-general {:current-time (-> (js/Date.) (.toLocaleString))
-                          :current-file-path (meta-for-context-part (context/current-file) nil [:path])
-                          :current-file-size (update (meta-for-context-part (context/current-file-content) "current-file-content" []) :range (partial apply +))
-                          :current-selection-range (meta-for-context-part (context/selection) "current-selection" [])}
+                          :current-file-path (meta-for-context-part
+                                              (context/current-file) nil [:path])
+                          :current-file-size (update (meta-for-context-part
+                                                      (context/current-file-content)
+                                                      "current-file-content" [])
+                                                     :range
+                                                     (partial apply +))
+                          :current-selection-range (meta-for-context-part
+                                                    (context/selection) "current-selection" [])}
         metadata-clojure (when clojure?
-                           {:current-namepace (meta-for-context-part (context/current-ns) "current-ns" [:namespace :ns-form-size])
-                            :current-form-range (meta-for-context-part (context/current-form) "current-form" [])
-                            :current-enclosing-form-range (meta-for-context-part (context/current-enclosing-form) "current-enclosing-form" [])
+                           {:current-namepace (meta-for-context-part
+                                               (context/current-ns) "current-ns" [:namespace :ns-form-size])
+                            :current-form-range (meta-for-context-part
+                                                 (context/current-form) "current-form" [])
+                            :current-enclosing-form-range (meta-for-context-part
+                                                           (context/current-enclosing-form) "current-enclosing-form" [])
                             :current-function (meta-for-context-part (context/current-function) nil [:content])
-                            :current-top-level-form-range (meta-for-context-part (context/current-top-level-form) "current-top-level-form" [])
-                            :current-top-level-defines (meta-for-context-part (context/current-top-level-defines) nil [:content])})
-        metadata (cond-> {:general metadata-general}
-                   clojure? (assoc :clojure metadata-clojure))
-        metadata-lines ["--- START OF USER CONTEXT METADATA\n"
-                        "See the instructions for the `get_context` function to figure about how the metadata helps you use that function intelligently."
-                        ""
-                        "```edn"
-                        (pr-str {:context-metadata metadata})
-                        "```"
-                        ""
-                        "Avoid referring to the context data and metadata directly in conversations with the user. Focus more on what you think about the code, and what it's doing, than the context parts themselves."
-                        "Reminder: When the user says things like 'this', 'here', 'it', or genereally refers to something, it is probably the context being on their mind."
-                        ""
-                        "--- END OF USER CONTEXT METADATA\n"]]
+                            :current-top-level-form-range (meta-for-context-part
+                                                           (context/current-top-level-form) "current-top-level-form" [])
+                            :current-top-level-defines (meta-for-context-part
+                                                        (context/current-top-level-defines) nil [:content])})]
+    (cond-> {:general metadata-general}
+      clojure? (assoc :clojure metadata-clojure))))
+
+
+(defn- context-metadata [document]
+  (let [metadata (if document
+                   (meta-from-document document)
+                   "There is no active doumentent in the user's context")
+        start-marker "--- START OF USER CONTEXT METADATA"
+        end-marker "--- END OF USER CONTEXT METADATA"
+        metadata-lines (if document
+                         [start-marker
+                          "See the instructions for the `get_context` function to figure about how the metadata helps you use that function intelligently."
+                          ""
+                          "```edn"
+                          (pr-str {:context-metadata metadata})
+                          "```"
+                          ""
+                          "Avoid referring to the context data and metadata directly in conversations with the user. Focus more on what you think about the code, and what it's doing, than the context parts themselves."
+                          "Reminder: When the user says things like 'this', 'here', 'it', or genereally refers to something, it is probably the context being on their mind."
+                          ""
+                          end-marker]
+                         [start-marker metadata end-marker])]
     (string/join "\n" metadata-lines)))
 
 (def user-input-marker "--- INPUT FROM THE USER:")
 
-(defn augmented-user-input [input]
-  (str (context-metadata)
+(defn augmented-user-input [input document]
+  (str (context-metadata document)
        (string/join "\n"
                     [""
+                     ""
                      user-input-marker
                      ""
                      input])))
@@ -114,5 +135,6 @@ The `context-part`s available:
 
 (comment
   (js/JSON.stringify get_context-description)
-  (println (augmented-user-input "foo"))
+  (println (augmented-user-input "foo" (some-> vscode/window.activeTextEditor .-document)))
+  (println (augmented-user-input "foo" nil))
   :rcf)
