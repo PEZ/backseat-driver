@@ -1,6 +1,6 @@
 (ns workspace-activate
   (:require [joyride.core :as joyride]
-            [test-runner.runner] ;; The test runner needs to know when the workspace is activated
+            [seatbelt.runner] ;; The test runner needs to know when the workspace is activated
             ))
 
 ;; This script only initializes the Backseat Driver app,
@@ -22,7 +22,7 @@
       (println "Initializing Backseat Driver app...")
       (require '[backseat-driver.app])
       ((resolve 'backseat-driver.app/init!))))
-  (test-runner.runner/ready-to-run-tests! "Workspace activated."))
+  (seatbelt.runner/ready-to-run-tests! "Workspace activated."))
 
 (when (= (joyride/invoked-script) joyride/*file*)
   (-main))

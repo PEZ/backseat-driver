@@ -6,7 +6,7 @@ exports.run = async () => {
   console.log("runTests.js: calva activated, executing joyride.runCode to run tests");
   return vscode.commands.executeCommand(
     'joyride.runCode',
-    `(require '[test-runner.runner :as runner])
+    `(require '[seatbelt.runner :as runner])
      (runner/watch!+ "Waiting for workspace to activate...")`
   );
 };

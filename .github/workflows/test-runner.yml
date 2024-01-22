@@ -24,10 +24,9 @@ jobs:
         key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
         restore-keys: ${{ runner.os }}-node
 
-    - name: Debug list current directory
-      run: |
-        pwd
-        ls -l
+    - name: Install dependencies
+      run: npm i
+
     - name: Run tests
       uses: coactions/setup-xvfb@v1
       with:

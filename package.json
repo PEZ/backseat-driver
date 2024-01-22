@@ -3,9 +3,8 @@
   "version": "1.0.0",
   "description": "The Hackable VS Code AI Assistant",
   "scripts": {
-    "pretest": "npm i",
-    "test": "JOYRIDE_HEADLESS=true node .joyride/src/test_runner/launch-test-runner.js",
-    "watch-test": "JOYRIDE_HEADLESS=true node .joyride/src/test_runner/launch-test-runner.js --watch"
+    "test": "cross-env JOYRIDE_HEADLESS=true node .joyride/src/seatbelt/launcher.js",
+    "watch-tests": "cross-env JOYRIDE_HEADLESS=true node .joyride/src/seatbelt/launcher.js --watch"
   },
   "keywords": [],
   "author": "pez@pezius.com",
@@ -15,6 +14,7 @@
     "openai": "^4.24.3"
   },
   "devDependencies": {
-    "@vscode/test-electron": "^2.3.8"
+    "@vscode/test-electron": "^2.3.8",
+    "@w72/cross-env": "1.0.2"
   }
 }

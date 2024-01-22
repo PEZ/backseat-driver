@@ -1,4 +1,4 @@
-(ns test-runner.runner
+(ns seatbelt.runner
   (:require ["vscode" :as vscode]
             ["path" :as path]
             [clojure.string :as string]
@@ -22,7 +22,7 @@
 (defmethod cljs.test/report [:cljs.test/default :begin-test-var] [m]
   (write "===" (str (-> m :var meta :name) ": ")))
 
-(defmethod cljs.test/report [:cljs.test/default :end-test-var] [m]
+(defmethod cljs.test/report [:cljs.test/default :end-test-var] [_m]
   (write " ===\n"))
 
 (def original-pass (get-method cljs.test/report [:cljs.test/default :pass]))
@@ -54,10 +54,10 @@
     (let [{:keys [runner+ pass fail error] :as state} @!state
           passed-minimum-threshold 2
           fail-reason (cond
-                        (< 0 (+ fail error)) "test-runner: 👎 FAILURE: Some tests failed or errored"
-                        (< pass passed-minimum-threshold) (str "test-runner: 👎 FAILURE: Less than " passed-minimum-threshold " assertions passed. (Passing: " pass ")")
+                        (< 0 (+ fail error)) "seatbelt: 👎 FAILURE: Some tests failed or errored"
+                        (< pass passed-minimum-threshold) (str "seatbelt: 👎 FAILURE: Less than " passed-minimum-threshold " assertions passed. (Passing: " pass ")")
                         :else nil)]
-      (println "test-runner: tests run, results:"
+      (println "seatbelt: tests run, results:"
                (select-keys state [:pass :fail :error]) "\n")
       (when runner+ ; When not using the runner, there's no promise to resolve or reject
         (if fail-reason
@@ -65,7 +65,7 @@
           (p/resolve! runner+ true))))))
 
 (defn- run-tests-impl!+ [test-nss]
-  (println "test-runner: Starting tests...")
+  (println "seatbelt: Starting tests...")
   (init-counters!)
   (try
     (doseq [test-ns test-nss]
@@ -78,7 +78,7 @@
   "The test runner will wait for this to be called before running any tests.
    `ready-message` will be logged when this is called"
   [ready-message]
-  (println "test-runner:" ready-message)
+  (println "seatbelt:" ready-message)
   (swap! !state assoc :ready-to-run? true))
 
 (defn run-ns-tests!+
@@ -91,7 +91,7 @@
     (if (:ready-to-run? @!state)
       (run-tests-impl!+ test-nss)
       (do
-        (println "test-runner: " waiting-message)
+        (println "seatbelt: " waiting-message)
         (add-watch !state :runner (fn [k r _o n]
                                        (when (:ready-to-run? n)
                                          (remove-watch r k)
@@ -118,30 +118,30 @@
   `waiting-message` will be logged if the test runner is waiting."
   [waiting-message]
   (p/let [nss (glob->ns-symbols ".joyride/src/test/**/*_test.clj[sc]")]
-    (println "test-runner: Running tests in these" (count nss) "namespaces" (pr-str nss))
+    (println "seatbelt: Running tests in these" (count nss) "namespaces" (pr-str nss))
     (run-ns-tests!+ nss waiting-message)))
 
 (defn watcher-test-run!+
-   ([uri reason]
-    (watcher-test-run!+ uri reason nil))
-   ([uri reason waiting-message]
-    (println reason (vscode/workspace.asRelativePath uri))
-    (println "Running tests...")
-    (when-not (= "." uri)
-      (require (uri->ns-symbol uri) :reload-all))
-    (-> (run-tests!+ waiting-message)
-        (p/then (fn [_]
-                  (js/setImmediate
-                   #(println "🟢 YAY! 🟢"))))
-        (p/catch (fn [e]
-                   (js/setImmediate
-                    #(do (println "\u0007") ; No sound? Check your settings for
-                                            ; terminal.integrated.enableBell
-                         (println "🔴 NAY! 🔴" e)))))
-        (p/finally (fn []
-                     (js/setImmediate
-                      #(println "Waiting for changes...")))))))
+  ([uri reason]
+   (watcher-test-run!+ uri reason nil))
+  ([uri reason waiting-message]
+   (println reason (vscode/workspace.asRelativePath uri))
+   (println "Running tests...")
+   (when-not (= "." uri)
+     (require (uri->ns-symbol uri) :reload-all))
+   (-> (run-tests!+ waiting-message)
+       (p/then (fn [_]
+                 (js/setImmediate
+                  #(println "🟢 YAY! 🟢"))))
+       (p/catch (fn [e]
+                  ; No sound? Check your settings for terminal.integrated.enableBell
+                  (js/setImmediate #(do (println "\u0007")
+                                        (println "🔴 NAY! 🔴" e)))))
+       (p/finally (fn []
+                    (js/setImmediate
+                     #(println "Waiting for changes...")))))))
 
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn watch!+ [waiting-message]
   (let [glob-pattern "**/.joyride/**/*.cljs"
         watcher (vscode/workspace.createFileSystemWatcher glob-pattern)]
