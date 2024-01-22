@@ -34,7 +34,7 @@
     (swap! !db update-in [:threads thread-id]
            (partial update-thread-data api-thread title current-time))))
 
-(defn- all-threads-sorted [db]
+(defn all-threads-sorted [db]
   (-> (:threads db)
       (util/->vec-sort-vals-by :updated-at)))
 
@@ -73,6 +73,7 @@
   (ui/render! (messages->string messages)))
 
 (defn switch-to-thread!+ [!db thread-id]
+  (def thread-id thread-id)
   (p/let [[messages api-thread] (p/all
                                  [(fetch-messages!+ thread-id)
                                   (openai-api/openai.beta.threads.retrieve thread-id)])]

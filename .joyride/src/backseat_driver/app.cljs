@@ -32,6 +32,17 @@
   (let [channel (:channel @db/!db)]
     (-> channel .clear)))
 
+(defn switch-session! []
+  (let [current-thread-id (-> @db/!db :current-thread .-id)]
+    (p/let [thread-id (p/->> (threads/all-threads-sorted @db/!db)
+                             (remove (fn [thread-data]
+                                       (def thread-data thread-data)
+                                       (= current-thread-id (:thread-id thread-data))))
+                             (reverse)
+                             (ui/show-sessions-picker+))]
+      (when thread-id
+        (threads/switch-to-thread!+ db/!db thread-id)))))
+
 (defn init! []
   (p/do!
    (clear-disposables!)

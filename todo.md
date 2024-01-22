@@ -1,9 +1,9 @@
 * [x] Sometimes no answer, because done-status, but not `completed`
-* [ ] Strange issue with stored thread objects not being updated with title nor shared files
-* [ ] Confusing naming of stored-threads, which are not stored threads, but rather stored thread meta data
+* [x] Strange issue with stored thread objects not being updated with title nor shared files
+* [x] Confusing naming of stored-threads, which are not stored threads, but rather stored thread meta data
 * [x] Render thread (session)
 * [x] Restore last chat session on start
-* [ ] Session switcher UI (sessions palette)
+* [x] Session switcher UI (sessions palette)
 * [x] Explore how to control the costs
   * [x] We're using a lot of tokens reaching the rate limit TPD of 500K
   * [x] Prioritize what to send with the context
@@ -15,7 +15,7 @@
 
 ## Function calling
 * [x] current-file-path, because assumptions...
-* [ ] We need much better prompting, guiding the AI how to use the functions
+* [x] Better prompting, guiding the AI how to use the functions
   * [ ] Make it ask for current file, when it hasn't seen it before
 * [ ] We need to capture the context at the time of the query
 

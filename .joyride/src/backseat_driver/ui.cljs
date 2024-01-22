@@ -2,7 +2,8 @@
   (:require ["vscode" :as vscode]
             [backseat-driver.db :as db]
             [promesa.core :as p]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [backseat-driver.util :as util]))
 
 (def assistant-name "Backseat Driver")
 
@@ -64,6 +65,9 @@
 (defn create-new-session!+ []
   (vscode/commands.executeCommand "joyride.runCode" "(backseat-driver.app/new-session!)"))
 
+(defn switch-session!+ []
+  (vscode/commands.executeCommand "joyride.runCode" "(backseat-driver.app/switch-session!)"))
+
 (defn interrupt-polling! []
   (swap! db/!db assoc :interrupted? true))
 
@@ -73,7 +77,8 @@
   {:interrupt-polling! interrupt-polling!
    :ask-for-assistance!+ ask-for-assistance!+
    :create-new-session!+ create-new-session!+
-   :show-channel! show-channel!})
+   :show-channel! show-channel!
+   :switch-session!+ switch-session!+})
 
 (defn- palette-items [db]
   (let [thread-running? (:thread-running? db)]
@@ -83,16 +88,21 @@
              :function :interrupt-polling!})
 
       (not thread-running?)
-      (conj {:label "Advice Me"
+      (conj {:label "Chat"
              :function :ask-for-assistance!+})
+
+      :always
+      (conj {:label "Show current session"
+             :function :show-channel!})
+
+      (not thread-running?)
+      (conj {:label "Switch session"
+             :function :switch-session!+})
+
 
       (not thread-running?)
       (conj {:label "Start new session"
-             :function :create-new-session!+})
-
-      :always
-      (conj {:label "Show Output Channel"
-             :function :show-channel!}))))
+             :function :create-new-session!+}))))
 
 (comment
   (= [{:function :ask-for-assistance!+ :label "Advice Me"}
@@ -120,6 +130,21 @@
 
   db/!db
   :rcf)
+
+(defn show-sessions-picker+ [ threads-data]
+  (p/let [items (->> threads-data
+                     (map (fn [thread-data]
+                            (def thread-data thread-data)
+                            {:label (:title thread-data)
+                             :thread-id (:thread-id thread-data)
+                             :detail (str (js/Date. (* 1000 (:updated-at thread-data))))})))
+          pick (vscode/window.showQuickPick
+                (clj->js items)
+                #js {:title "Backseat Driver: Switch session"
+                     :placeHolder "Select a session"})]
+    (when pick
+      (:thread-id (util/->clj pick)))))
+
 
 (defn add-assist-button! []
   (let [item (vscode/window.createStatusBarItem assist-button-id
