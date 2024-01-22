@@ -37,7 +37,7 @@ Backseat Driver is meant to be a global (User) Joyride script, so that it is ava
     {
         "key": "ctrl+alt+,",
         "command": "joyride.runCode",
-        "args": "(backseat Driver.app/please-advice!)",
+        "args": "(backseat-driver.app/please-advice!)",
     },
    ```
 
