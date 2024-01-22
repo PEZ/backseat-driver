@@ -4,10 +4,10 @@
 * [x] Render thread (session)
 * [x] Restore last chat session on start
 * [ ] Session switcher UI (sessions palette)
-* [ ] Explore how to control the costs
-  * [ ] We're using a lot of tokens reaching the rate limit TPD of 500K
-  * [ ] Prioritize what to send with the context
-  * [ ] Prioritize what instructions we give
+* [x] Explore how to control the costs
+  * [x] We're using a lot of tokens reaching the rate limit TPD of 500K
+  * [x] Prioritize what to send with the context
+  * [x] Prioritize what instructions we give
 * [ ] Stop sending around thread everywhere we only need the thread-id
 * [ ] Update the assistant with latest instructions
   * [ ] Also update the assistant with latest functions/tools defintions

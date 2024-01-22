@@ -11,7 +11,7 @@
 (def persistance-key "backseat-driver-threads")
 (def ^:private max-title-length 120)
 
-(defn persisted-threads-data [p-key]
+(defn- persisted-threads-data [p-key]
   (let [workspace-state (-> (joyride/extension-context) .-workspaceState)]
     (-> (.get workspace-state p-key #js {}) util/->clj)))
 
@@ -27,14 +27,14 @@
            :updated-at current-time
            :title new-title})))
 
-(defn save-thread-data!+
+(defn- save-thread-data!+
   [!db api-thread title]
   (let [thread-id (keyword (.-id api-thread))
         current-time ((:current-time-fn @!db))]
     (swap! !db update-in [:threads thread-id]
            (partial update-thread-data api-thread title current-time))))
 
-(defn all-threads-sorted [db]
+(defn- all-threads-sorted [db]
   (-> (:threads db)
       (util/->vec-sort-vals-by :updated-at)))
 
@@ -46,21 +46,21 @@
 (defn message-text [message]
   (-> message :content first :text :value))
 
-(defn message-info [message]
+(defn- message-info [message]
   {:role (:role message)
    :text (message-text message)})
 
-(defn trim-user-text [text start-marker]
+(defn- trim-user-text [text start-marker]
   (let [[_ user-message] (string/split text start-marker)]
     (string/triml user-message)))
 
-(defn renderable-message [info]
+(defn- renderable-message [info]
   (cond
     (= "assistant" (:role info)) (ui/assistant-says (:text info))
     (= "user" (:role info))      (ui/user-says (trim-user-text (:text info) prompts/user-input-marker))
     :else (str "Unknown role: " (:role info))))
 
-(defn messages->string [messages]
+(defn- messages->string [messages]
   (->> messages
        reverse
        (map message-info)
