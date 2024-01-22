@@ -262,8 +262,9 @@
   (-> (p/let [assistant (:assistant+ @db/!db)
               thread (:current-thread @db/!db)
               input (vscode/window.showInputBox
-                     #js {:prompt "What do you want say to the assistant?"
-                          :placeHolder "Something something"
+                     #js {:title (:name assistant-conf)
+                          :prompt "Ask the AI for assistance"
+                          :placeHolder "Words like this code/form/namespace/file hints the AI what you ask about"
                           :ignoreFocusOut true})]
         (when-not (= js/undefined input)
           (p/let [_ (ui/user-says! input)
