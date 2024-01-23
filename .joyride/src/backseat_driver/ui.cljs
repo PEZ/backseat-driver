@@ -88,6 +88,12 @@
    :show-channel! show-channel!
    :switch-session!+ switch-session!+})
 
+(def gpt->ask-item
+  {:gpt-3 {:label "Ask GPT-3"
+           :function :ask-gpt-3!+}
+   :gpt-4 {:label "Ask GPT-4"
+           :function :ask-gpt-4!+}})
+
 (defn- palette-items [db]
   (let [thread-running? (:thread-running? db)]
     (cond-> []
@@ -96,12 +102,12 @@
              :function :interrupt-polling!})
 
       (not thread-running?)
-      (conj {:label "Ask GPT-3"
-             :function :ask-gpt-3!+})
+      (conj (gpt->ask-item (:gpt db)))
 
       (not thread-running?)
-      (conj {:label "Ask GPT-4"
-             :function :ask-gpt-4!+})
+      (conj (gpt->ask-item (if (= :gpt-3 (:gpt db))
+                             :gpt-4
+                             :gpt-3)))
 
       :always
       (conj {:label "Show current session"
@@ -116,7 +122,9 @@
       (conj {:label "Start new session"
              :function :create-new-session!+}))))
 
+
 (comment
+  (palette-items @db/!db)
   (= [{:function :ask-for-assistance!+ :label "Advice Me"}
       {:function :create-new-session!+ :label "Start new session"}
       {:function :show-channel! :label "Show Output Channel"}]
@@ -124,16 +132,18 @@
   (def menu-while-running (palette-items {:thread-running? true}))
   :rcf)
 
-(defn show-palette! [db]
-  (p/let [items (->> (palette-items db)
-                     (map (fn [item]
-                            (update item :function palette-function-name->fn))))
-          pick (vscode/window.showQuickPick
-                (clj->js items)
-                #js {:title "Backseat Driver"
-                     :placeHolder "Gimme the keys, I can drive!"})]
-    (when pick
-      ((.-function pick)))))
+(defn show-palette!
+  ([] (show-palette! @db/!db))
+  ([db]
+   (p/let [items (->> (palette-items db)
+                      (map (fn [item]
+                             (update item :function palette-function-name->fn))))
+           pick (vscode/window.showQuickPick
+                 (clj->js items)
+                 #js {:title "Backseat Driver"
+                      :placeHolder "Gimme the keys, I can drive!"})]
+     (when pick
+       ((.-function pick))))))
 
 (comment
   (show-palette! @db/!db)
