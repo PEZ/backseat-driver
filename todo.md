@@ -17,7 +17,7 @@
 * [x] current-file-path, because assumptions...
 * [x] Better prompting, guiding the AI how to use the functions
   * [ ] Make it ask for current file, when it hasn't seen it before
-* [ ] We need to capture the context at the time of the query
+* [x] We need to capture the context at the time of the query
 
 ## Joyride TODO
 

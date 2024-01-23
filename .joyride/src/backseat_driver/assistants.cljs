@@ -25,6 +25,12 @@
    "current-top-level-form" context/current-top-level-form
    "current-top-level-defines" context/current-top-level-defines})
 
+(defn- map-calling-vals [m]
+  (reduce-kv (fn [acc k f]
+               (assoc acc k (f)))
+             {}
+             m))
+
 (def function-arguments
   {:get_context {:context-part (set (keys context-part->function))}})
 
@@ -69,11 +75,11 @@
   #_ (.update (-> (joyride/extension-context) .-globalState) "backseat-driver-assistant-id" js/undefined)
   :rcf)
 
-(defn call-info->tool-output [call-info]
+(defn call-info->tool-output [contexts call-info]
   (let [context-part (-> call-info :arguments :context-part)
-        context-fn (context-part->function context-part (str "Not a valid function: " context-part))]
+        context (contexts context-part (str "Not a valid function: " context-part))]
     {:tool_call_id (:call-id call-info)
-     :output (pr-str (context-fn))}))
+     :output (pr-str context)}))
 
 (defn function-call->call-info [tool-function-call]
   (let [function-name (-> tool-function-call :function :name)
@@ -118,7 +124,7 @@
 (defn type-function? [call]
   (= "function" (:type call)))
 
-(defn tool-calls->outputs [run]
+(defn tool-calls->outputs [contexts run]
   (def run run)
   (->> (get-in run [:required_action :submit_tool_outputs :tool_calls])
        (filter type-function?)
@@ -129,10 +135,11 @@
                 (let [error (:error call-info)]
                   {:tool_call_id (:call-id (ex-data error))
                    :output (pr-str error)})
-                (call-info->tool-output call-info))))))
+                (call-info->tool-output contexts call-info))))))
 
 (comment
-  (tool-calls->outputs run)
+  (def my-contexts (map-calling-vals context-part->function))
+  (tool-calls->outputs my-contexts run)
 
   (->> {:required_action
         {:submit_tool_outputs
@@ -140,7 +147,7 @@
                                    :name "get_context"}
                         :id "call_vaRD4ybll9hRLzcttSSiSbnD"
                         :type "function"}]}}}
-       (tool-calls->outputs))
+       (tool-calls->outputs my-contexts))
 
   (pr-str (ex-info "BOO" {:causes "Ditt fel ju!"}))
   :rcf)
@@ -167,7 +174,7 @@
 (defn- report-status! [status]
   (ui/say-one! (status->indicator status "U]\n")))
 
-(defn- retrieve-poller+ [thread-id run-id]
+(defn- retrieve-poller+ [contexts thread-id run-id]
   (def thread-id thread-id)
   (def run-id run-id)
   (swap! db/!db assoc :thread-running? true)
@@ -212,7 +219,7 @@
                                  (-> (openai-api/openai.beta.threads.runs.submitToolOutputs
                                       thread-id
                                       run-id
-                                      (clj->js {:tool_outputs (tool-calls->outputs run)}))
+                                      (clj->js {:tool_outputs (tool-calls->outputs contexts run)}))
                                      (p/then (fn [_]
                                                (retrieve-again)))
                                      (p/catch (fn [error]
@@ -243,8 +250,9 @@
         run (openai-api/openai.beta.threads.runs.create
              (.-id thread)
              (clj->js {:assistant_id (.-id assistant)
-                       :model gpt4}))]
-        (retrieve-poller+ (.-id thread) (.-id run)))
+                       :model gpt4}))
+        contexts (map-calling-vals context-part->function)]
+        (retrieve-poller+ contexts (.-id thread) (.-id run)))
       (p/catch (fn [[thread-id run-id status :as poll-info]]
                  (report-status! status)
                  (ui/say-ln! "status:" (str status))
