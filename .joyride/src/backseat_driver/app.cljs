@@ -57,8 +57,12 @@
    ; create-thread
    (push-disposable (ui/add-assist-button!))))
 
-(defn please-advice! []
-  (assistants/advice!+))
+(defn please-advice!
+  ([]
+   (assistants/advice!+ db/!db))
+  ([gpt]
+   (swap! db/!db assoc :gpt gpt)
+   (please-advice!)))
 
 (comment
   (init!)

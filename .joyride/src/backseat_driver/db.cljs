@@ -2,6 +2,7 @@
 
 (def ^:private default-db {:disposables []
                            :assistant+ nil
+                           :gpt :gpt-4
                            :current-thread nil
                            :threads {}
                            :current-time-fn #(-> (js/Date.) .getTime (/ 1000))

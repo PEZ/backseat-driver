@@ -59,14 +59,21 @@
 (defn user-says! [text]
   (say-ln! "\nMe:" text))
 
-(defn ask-for-assistance!+ []
-  (vscode/commands.executeCommand "joyride.runCode" "(backseat-driver.app/please-advice!)"))
+(defn ask-for-assistance!+
+  ([]
+   (vscode/commands.executeCommand "joyride.runCode"
+                                   "(backseat-driver.app/please-advice!)"))
+  ([gpt]
+   (vscode/commands.executeCommand "joyride.runCode"
+                                   (str "(backseat-driver.app/please-advice! " gpt ")"))))
 
 (defn create-new-session!+ []
-  (vscode/commands.executeCommand "joyride.runCode" "(backseat-driver.app/new-session!)"))
+  (vscode/commands.executeCommand "joyride.runCode"
+                                  "(backseat-driver.app/new-session!)"))
 
 (defn switch-session!+ []
-  (vscode/commands.executeCommand "joyride.runCode" "(backseat-driver.app/switch-session!)"))
+  (vscode/commands.executeCommand "joyride.runCode"
+                                  "(backseat-driver.app/switch-session!)"))
 
 (defn interrupt-polling! []
   (swap! db/!db assoc :interrupted? true))
@@ -75,7 +82,8 @@
 
 (def palette-function-name->fn
   {:interrupt-polling! interrupt-polling!
-   :ask-for-assistance!+ ask-for-assistance!+
+   :ask-gpt-3!+ (partial ask-for-assistance!+ :gpt-3)
+   :ask-gpt-4!+ (partial ask-for-assistance!+ :gpt-4)
    :create-new-session!+ create-new-session!+
    :show-channel! show-channel!
    :switch-session!+ switch-session!+})
@@ -88,8 +96,12 @@
              :function :interrupt-polling!})
 
       (not thread-running?)
-      (conj {:label "Chat"
-             :function :ask-for-assistance!+})
+      (conj {:label "Ask GPT-3"
+             :function :ask-gpt-3!+})
+
+      (not thread-running?)
+      (conj {:label "Ask GPT-4"
+             :function :ask-gpt-4!+})
 
       :always
       (conj {:label "Show current session"

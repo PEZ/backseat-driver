@@ -245,7 +245,7 @@
       (p/finally (fn []
                    (swap! db/!db assoc :thread-running? false)))))
 
-(defn- call-assistance!+ [assistant thread input]
+(defn- call-assistance!+ [assistant model thread input]
   (-> (p/let
        [document (some-> vscode/window.activeTextEditor .-document)
         augmented-input (prompts/augmented-user-input
@@ -257,7 +257,7 @@
         run (openai-api/openai.beta.threads.runs.create
              (.-id thread)
              (clj->js {:assistant_id (.-id assistant)
-                       :model gpt4}))
+                       :model model}))
         ;; TODO: If there is no current active editor, `(map-calling-vals context-part->function)` crashes
         contexts (if document
                    (map-calling-vals context-part->function)
@@ -277,24 +277,24 @@
     (not last-created-at) (filter #(= (:role %) "assistant"))
     :always (sort-by :created_at)))
 
-(defn advice!+ []
-  (swap! db/!db assoc :interrupted? false)
-  (-> (p/let [assistant (:assistant+ @db/!db)
-              thread (:current-thread @db/!db)
+(defn advice!+ [!db]
+  (swap! !db assoc :interrupted? false)
+  (-> (p/let [assistant (:assistant+ @!db)
+              model (if (= :gpt-3 (:gpt @!db)) gpt3 gpt4)
+              thread (:current-thread @!db)
               input (vscode/window.showInputBox
                      #js {:title (:name assistant-conf)
-                          :prompt "Ask the AI for assistance"
+                          :prompt (str "Model: " model)
                           :placeHolder "Words like this code/form/namespace/file hints the AI what you ask about"
                           :ignoreFocusOut true})]
         (when-not (= js/undefined input)
           (p/let [_ (ui/user-says! input)
-                  _ (threads/save-thread-data!+ db/!db thread input)
-                  messages (call-assistance!+ assistant thread input)
-                  last-created-at (some-> @db/!db :messages first :created_at)
+                  _ (threads/save-thread-data!+ !db thread input)
+                  messages (call-assistance!+ assistant model thread input)
+                  last-created-at (some-> @!db :messages first :created_at)
                   new-messages (new-assistant-messages messages last-created-at)
-                  _ (swap! db/!db assoc :messages messages)
+                  _ (swap! !db assoc :messages messages)
                   message-texts (map threads/message-text new-messages)]
             (ui/assistant-says! message-texts)
             :advice-given+)))
       (p/catch (fn [e] (println "ERROR: " e "\n")))))
-
