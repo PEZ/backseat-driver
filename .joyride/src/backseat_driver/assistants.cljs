@@ -244,6 +244,7 @@
              (.-id thread)
              (clj->js {:assistant_id (.-id assistant)
                        :model gpt4}))
+        ;; TODO: If there is no current active editor, `(map-calling-vals context-part->function)` crashes
         contexts (map-calling-vals context-part->function)]
         (retrieve-poller+ contexts (.-id thread) (.-id run)))
       (p/catch (fn [[thread-id run-id status :as poll-info]]
