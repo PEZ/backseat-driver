@@ -83,7 +83,7 @@ Backseat Driver is like a pair programmer to the user, eager to see what user se
                             :current-top-level-form-range (meta-for-context-part
                                                            (context/current-top-level-form) "current-top-level-form" [])
                             :current-top-level-defines (meta-for-context-part
-                                                        (context/current-top-level-defines) nil [:content])})]
+                                                        (context/current-top-level-defines) "current-top-level-form" [:content])})]
     (cond-> {:general metadata-general}
       clojure? (assoc :clojure metadata-clojure))))
 
@@ -121,16 +121,16 @@ Backseat Driver is like a pair programmer to the user, eager to see what user se
                      input])))
 
 (def get_context-description
-  "Fetches a selection of `context-part`s from the user's current editor file. Use the context meta data you have been provided to form decisions on if, when, and what `content-part` to request.
+  "Fetches your choice of `context-part`s from the user's current editor file. Use the context meta data you have been provided with the user message to intelligently select what `content-part`s to request. Keep requesting until you have enough context to answer the user's question.
 
-The `context-part`s available:
+The `context-part`s available are:
+
 * `current-file-content` (all-files): The full content of the file (truncated if it is very large)
-* `current-namespace-form` (Clojure): The current namespace name and the form, corresponds to the `current-file-path` from the context metadata.
-* `current-selection` (all files): What the user has selected in the document will be evaluated on ctrl+enter.
+* `current-namespace-form` (Clojure): The full current namespace form.
+* `current-selection` (all files): What the user has selected in the document. If there is an active selection, this is also what will be evaluated on ctrl+enter.
 * `current-form` (Clojure): The Current Form in the Calva sense. The thing that will be evaluated on ctrl+enter if there is no selection. If the current-form is short (consult the metadata) it is probably just a symbol or word, and you may be more (or also) interested in `current-enclosing-form` or `current-top-level-form`.
 * `current-enclosing-form` (Clojure): The form containing the `current-form`
-* `current-top-level-form` (Clojure): Typically the function or namespace variable being defined. Otherwise it is probably some code meant for testing things. Rich Comment Forms is a common and encouraged practice, remember.
-* `current-top-level-defines` (Clojure): The function or namespace variable being defined by `current-top-level-form`
+* `current-top-level-form` (Clojure): Typically the function or namespace variable being defined. If it doesn't look like a definition, it may be some code meant for testing things, e.g. inside Rich Comment Forms.
 ")
 
 (comment

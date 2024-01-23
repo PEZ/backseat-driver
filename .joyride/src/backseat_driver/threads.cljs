@@ -117,6 +117,7 @@
   (:threads @db/!db)
   (all-threads-sorted @db/!db)
   (switch-to-thread!+ db/!db "thread_9H3iW9A6OnwmGKHH2yIDGt6c")
+  (switch-to-thread!+ db/!db "thread_SrjJdXgLXJ4P5P2TvpKCHbOI")
   (switch-to-thread!+ db/!db "thread_YpCijPby7r37fzgyfkvNVGK8") ; 1705419622782
 
   (def messages (util/->clj (-> api-messages-debug .-body .-data)))

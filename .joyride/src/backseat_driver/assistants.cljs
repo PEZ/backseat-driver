@@ -14,6 +14,8 @@
 (def ^:private gpt4 "gpt-4-1106-preview")
 (def ^:private gpt3 "gpt-3.5-turbo-1106")
 
+(def assistant-storage-key "backseat-driver-assistant-id")
+
 (def available-functions #{"get_context"})
 
 (def context-part->function
@@ -22,8 +24,7 @@
    "current-namespace-form" context/current-ns
    "current-form" context/current-form
    "current-enclosing-form" context/current-enclosing-form
-   "current-top-level-form" context/current-top-level-form
-   "current-top-level-defines" context/current-top-level-defines})
+   "current-top-level-form" context/current-top-level-form})
 
 (def context-part->empty
   (reduce-kv (fn [acc k _v]
@@ -59,9 +60,15 @@
                                   functions-conf)
                      :model gpt4})
 
+(comment
+  (openai-api/openai.beta.assistants.update (.get (-> (joyride/extension-context)
+                                                      .-globalState)
+                                                  assistant-storage-key)
+                                            (clj->js assistant-conf))
+  :rcf)
+
 (defn get-or-create-assistant!+ []
-  (p/let [assistant-storage-key "backseat-driver-assistant-id"
-          global-state (-> (joyride/extension-context) .-globalState)
+  (p/let [global-state (-> (joyride/extension-context) .-globalState)
           existing-assistant-id (.get global-state assistant-storage-key)
           assistant (if existing-assistant-id
                       (-> (openai-api/openai.beta.assistants.retrieve existing-assistant-id)
