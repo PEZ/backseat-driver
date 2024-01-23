@@ -104,8 +104,8 @@
       (let [arguments (-> args-json
                           js/JSON.parse
                           util/->clj)]
-        (def arguments arguments)
-        (def function-name function-name)
+        (println "call-info, arguments:" arguments)
+        (println "call-info, function-name:" function-name)
         (if (util/map-matches-spec? {(keyword function-name) arguments} function-arguments)
           {:call-id call-id
            :function-name function-name
@@ -125,12 +125,10 @@
   (= "function" (:type call)))
 
 (defn tool-calls->outputs [contexts run]
-  (def run run)
   (->> (get-in run [:required_action :submit_tool_outputs :tool_calls])
        (filter type-function?)
        (map function-call->call-info)
        (map (fn [call-info]
-              (def call-info call-info)
               (if (:error call-info)
                 (let [error (:error call-info)]
                   {:tool_call_id (:call-id (ex-data error))
@@ -139,7 +137,6 @@
 
 (comment
   (def my-contexts (map-calling-vals context-part->function))
-  (tool-calls->outputs my-contexts run)
 
   (->> {:required_action
         {:submit_tool_outputs
@@ -147,10 +144,7 @@
                                    :name "get_context"}
                         :id "call_vaRD4ybll9hRLzcttSSiSbnD"
                         :type "function"}]}}}
-       (tool-calls->outputs my-contexts))
-
-  (pr-str (ex-info "BOO" {:causes "Ditt fel ju!"}))
-  :rcf)
+       (tool-calls->outputs my-contexts)) :rcf)
 
 (def ^:private done-statuses #{"completed" "failed" "expired" "cancelled"})
 (def ^:private continue-statuses #{"queued" "in_progress" "cancelling"})
@@ -175,8 +169,8 @@
   (ui/say-one! (status->indicator status "U]\n")))
 
 (defn- retrieve-poller+ [contexts thread-id run-id]
-  (def thread-id thread-id)
-  (def run-id run-id)
+  (println "retrieve-poller+ thread-id:" thread-id)
+  (println "retrieve-poller+ run-id:" run-id)
   (swap! db/!db assoc :thread-running? true)
   (-> (p/create
        (fn [resolve reject]
@@ -192,7 +186,6 @@
                                                 poll-timeout)
                                               (.catch (fn [e]
                                                         (reject [thread-id run-id :poll-timeout (ex-cause e)]))))
-                                   _ (def retrieved-js run-js)
                                    run (util/->clj run-js)
                                    status (:status run)]
                              (cond
@@ -287,12 +280,4 @@
             (ui/assistant-says! message-texts)
             :advice-given+)))
       (p/catch (fn [e] (println "ERROR: " e "\n")))))
-
-(comment
-  (backseat-driver.app/init!)
-  (swap! db/!db assoc :interrupted? true)
-  (swap! db/!db assoc :interrupted? false)
-  @db/!db
-  :rcf)
-
 

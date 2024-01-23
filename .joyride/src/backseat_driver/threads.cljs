@@ -27,7 +27,7 @@
            :updated-at current-time
            :title new-title})))
 
-(defn- save-thread-data!+
+(defn save-thread-data!+
   [!db api-thread title]
   (let [thread-id (keyword (.-id api-thread))
         current-time ((:current-time-fn @!db))]
