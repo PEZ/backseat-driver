@@ -25,9 +25,15 @@
    "current-top-level-form" context/current-top-level-form
    "current-top-level-defines" context/current-top-level-defines})
 
+(def context-part->empty
+  (reduce-kv (fn [acc k _v]
+               (assoc acc k (str "There is no context for: " k)))
+             {}
+             context-part->function))
+
 (defn- map-calling-vals [m]
-  (reduce-kv (fn [acc k f]
-               (assoc acc k (f)))
+  (reduce-kv (fn [acc k v]
+               (assoc acc k (v)))
              {}
              m))
 
@@ -234,9 +240,10 @@
 
 (defn- call-assistance!+ [assistant thread input]
   (-> (p/let
-       [augmented-input (prompts/augmented-user-input
+       [document (some-> vscode/window.activeTextEditor .-document)
+        augmented-input (prompts/augmented-user-input
                          input
-                         (some-> vscode/window.activeTextEditor .-document))
+                         document)
         _message (openai-api/openai.beta.threads.messages.create (.-id thread)
                                                                  (clj->js {:role "user"
                                                                            :content augmented-input}))
@@ -245,7 +252,9 @@
              (clj->js {:assistant_id (.-id assistant)
                        :model gpt4}))
         ;; TODO: If there is no current active editor, `(map-calling-vals context-part->function)` crashes
-        contexts (map-calling-vals context-part->function)]
+        contexts (if document
+                   (map-calling-vals context-part->function)
+                   context-part->empty)]
         (retrieve-poller+ contexts (.-id thread) (.-id run)))
       (p/catch (fn [[thread-id run-id status :as poll-info]]
                  (report-status! status)
