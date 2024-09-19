@@ -6,7 +6,7 @@ The Hackable VS Code AI Assistant.
 
 **Backseat Driver** is a ChatGPT API client for VS Code, similar in concept to the chat part of the **GitHub CoPilot** extension, but much, much simpler.
 
-It best supports [Clojure](https://clojure.org) and [ClojureScript](https://clojurescript.org) coding, but can assist with anything code crafting related. Besdies. And it's a [Joyride](https://github.com/BetterThanTomorrow/joyride) script, so _you can hack in support_ for your language of choice.
+It best supports [Clojure](https://clojure.org) and [ClojureScript](https://clojurescript.org) coding, but can assist with anything code crafting related. And it's a [Joyride](https://github.com/BetterThanTomorrow/joyride) script, so _you can hack in support_ for your language of choice.
 
 WIP: Or even just a proof of concept for now. But it works!
 
